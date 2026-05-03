@@ -1,5 +1,5 @@
 // scripts/seed.ts
-import Database from 'better-sqlite3'
+import { DatabaseSync } from 'node:sqlite'
 import path from 'path'
 import fs from 'fs'
 
@@ -8,9 +8,9 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true })
 }
 
-const db = new Database(path.join(DATA_DIR, 'newsletter.db'))
-db.pragma('journal_mode = WAL')
-db.pragma('foreign_keys = ON')
+const db = new DatabaseSync(path.join(DATA_DIR, 'newsletter.db'))
+db.exec('PRAGMA journal_mode = WAL')
+db.exec('PRAGMA foreign_keys = ON')
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS newsletters (
