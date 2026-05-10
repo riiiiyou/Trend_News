@@ -2,7 +2,21 @@
 
 > **티켓 번호 형식**: `t-YYYYMMDD-NNN`  
 > **영역 분류**: 인프라 / 기능 / 화면 / 보안 / 문서 / 개발환경  
-> **수행 여부**: ✅ 완료 / 🔄 진행중 / ⬜ 예정 / ❌ 보류
+> **수행 여부**: ✅ 완료 / 🔄 진행중 / ⬜ 예정 / ❌ 보류  
+> **작업자**: 해당 티켓을 수행한 AI 에이전트 이름 (Claude / Codex / Jules / Gemini 등)
+
+---
+
+## AI 에이전트 작업 규칙
+
+1. **작업 착수 시** — 해당 티켓의 `수행 여부`를 `🔄 진행중`으로 변경한다.
+2. **작업 완료 시** — 아래 세 항목을 반드시 task.md에 직접 기입한 뒤 커밋한다.
+   - `수행 여부`: `✅ 완료`
+   - `작업자`: 본인 에이전트 이름 (예: `Claude`, `Codex`, `Jules`, `Gemini`)
+   - `완료일자`: 작업 완료 날짜 (`YYYY-MM-DD`)
+3. **신규 티켓 추가 시** — 티켓 번호는 `t-작업일자-고유번호` 형식을 따르며, `작업자`와 `완료일자`는 완료 후 기입한다.
+4. **task.md 수정은 작업 커밋과 분리하지 않는다** — 기능 구현 커밋 또는 완료 직후 커밋에 task.md 변경을 함께 포함한다.
+5. **다른 에이전트가 기입한 항목은 임의로 수정하지 않는다** — 작업자 본인이 담당한 티켓만 업데이트한다.
 
 ---
 
@@ -10,41 +24,41 @@
 
 | 티켓번호 | 영역 | 수행 여부 | 내용 | 작업자 | 연관 티켓 | 비고 | 완료일자 |
 |----------|------|:---------:|------|--------|-----------|------|----------|
-| t-20260510-001 | 인프라 | ✅ | Next.js 14 App Router 프로젝트 초기화 (package.json, tsconfig, tailwind, postcss 설정) | - | - | Node.js v24 호환 고려 | 2026-05-10 |
-| t-20260510-002 | 인프라 | ✅ | SQLite DB 레이어 구축 (`src/lib/db.ts`) — 싱글톤 커넥션, 스키마 자동 초기화, 타입 정의 | - | t-20260510-003 | 초기 better-sqlite3로 구현 | 2026-05-10 |
-| t-20260510-003 | 인프라 | ✅ | DB 패키지 마이그레이션: `better-sqlite3` → `node:sqlite` (Node.js 내장 모듈) | - | t-20260510-002 | Windows + Node v24 네이티브 컴파일 오류 해결. `db.pragma()` → `db.exec('PRAGMA ...')` 변경. `@types/node` v22로 업그레이드 | 2026-05-10 |
-| t-20260510-004 | 인프라 | ✅ | `next.config.js` 설정 — `serverComponentsExternalPackages` (pdf-parse) 등록 | - | t-20260510-001 | better-sqlite3 제거 후 항목에서도 삭제 | 2026-05-10 |
-| t-20260510-005 | 인프라 | ✅ | `.env.local` 환경변수 파일 생성 (ADMIN_PASSWORD, GMAIL_USER, GMAIL_APP_PASSWORD, NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_TEAM_NAME) | - | - | gitignore 처리됨 | 2026-05-10 |
-| t-20260510-006 | 기능 | ✅ | PDF 파싱 라이브러리 구현 (`src/lib/pdf-parser.ts`) — pdf-parse 기반 텍스트 추출, URL 감지, HTML 변환 | - | t-20260510-014 | - | 2026-05-10 |
-| t-20260510-007 | 기능 | ✅ | 이메일 발송 모듈 구현 (`src/lib/mailer.ts`) — Nodemailer + Gmail SMTP, HTML 이메일 템플릿 (헤더/본문/푸터, 웹보기 링크, PDF 다운로드 링크) | - | t-20260510-008 | BCC 방식으로 단일 발송 | 2026-05-10 |
-| t-20260510-008 | 기능 | ✅ | 자동 발송 스케줄러 구현 (`src/lib/scheduler.ts`) — node-cron 매 1분 실행, scheduled_sends 테이블 폴링, 발송 성공/실패 기록 | - | t-20260510-007, t-20260510-009 | - | 2026-05-10 |
-| t-20260510-009 | 인프라 | ✅ | `src/instrumentation.ts` — Next.js 서버 시작 시 스케줄러 1회 초기화 | - | t-20260510-008 | Next.js 14 instrumentation hook 활용 | 2026-05-10 |
-| t-20260510-010 | 보안 | ✅ | 관리자 인증 미들웨어 구현 (`src/middleware.ts`) — `/admin/*` 전체 쿠키 기반 보호 (`admin_session=authenticated`), `/admin/login` 제외 | - | t-20260510-011 | - | 2026-05-10 |
-| t-20260510-011 | 기능 | ✅ | 인증 API (`/api/auth`) — POST 로그인(환경변수 비밀번호 비교 + 쿠키 발급), DELETE 로그아웃(쿠키 삭제) | - | t-20260510-010 | - | 2026-05-10 |
-| t-20260510-012 | 기능 | ✅ | PDF 업로드 API (`/api/upload`) — FormData 수신, 20MB 제한, public/uploads/ 저장, 텍스트 추출, 뉴스레터 draft 생성 | - | t-20260510-006 | 업로드 직후 추출 링크를 summary 컬럼에 임시 JSON 저장 | 2026-05-10 |
-| t-20260510-013 | 기능 | ✅ | 뉴스레터 CRUD API (`/api/newsletters`, `/api/newsletters/[id]`) — 목록(status 필터), 단건 조회, 수정(임시저장/발행), 삭제 | - | - | - | 2026-05-10 |
-| t-20260510-014 | 기능 | ✅ | 구독자 CRUD API (`/api/subscribers`, `/api/subscribers/[id]`) — 목록, 추가(중복 이메일 방지), 삭제, CSV 일괄 업로드 | - | - | - | 2026-05-10 |
-| t-20260510-015 | 기능 | ✅ | 즉시 발송 API (`/api/send`) — 모든 구독자에게 즉시 HTML 이메일 발송, scheduled_sends에 이력 기록 | - | t-20260510-007 | - | 2026-05-10 |
-| t-20260510-016 | 기능 | ✅ | 발송 예약 API (`/api/schedule`) — 예약 생성, 목록 조회, 예약 취소 (status=cancelled) | - | t-20260510-008 | - | 2026-05-10 |
-| t-20260510-017 | 화면 | ✅ | 앱 공통 레이아웃 (`src/app/layout.tsx`) — Pretendard CDN 폰트, 메타데이터, globals.css 포함 | - | - | - | 2026-05-10 |
-| t-20260510-018 | 화면 | ✅ | 전역 스타일 (`src/app/globals.css`) — CSS 변수 테마 (`--point: #5B5BD6`), Tiptap ProseMirror 스타일, 뉴스레터 본문 타이포그래피 | - | - | - | 2026-05-10 |
-| t-20260510-019 | 화면 | ✅ | 공통 헤더 컴포넌트 (`src/components/Header.tsx`) — 로고, 홈/아카이브 네비게이션 | - | - | - | 2026-05-10 |
-| t-20260510-020 | 화면 | ✅ | 뉴스레터 카드 컴포넌트 (`src/components/NewsletterCard.tsx`) — 썸네일, 카테고리 뱃지, 제목, 요약, 날짜 표시 | - | - | - | 2026-05-10 |
-| t-20260510-021 | 화면 | ✅ | Tiptap 에디터 컴포넌트 (`src/components/TiptapEditor.tsx`) — 툴바(굵기/기울임/밑줄/제목/목록/인용/링크), 플레이스홀더 | - | t-20260510-025 | SSR 비활성화(dynamic import) | 2026-05-10 |
-| t-20260510-022 | 화면 | ✅ | 홈 페이지 (`/`) — 발행된 뉴스레터 카드 목록, 최신순 정렬, `force-dynamic` | - | - | - | 2026-05-10 |
-| t-20260510-023 | 화면 | ✅ | 뉴스레터 상세 페이지 (`/newsletter/[id]`) — HTML 본문 렌더링, PDF 다운로드 버튼, 이전/다음 네비게이션, `force-dynamic` | - | - | - | 2026-05-10 |
-| t-20260510-024 | 화면 | ✅ | 아카이브 페이지 (`/archive`) — 전체 뉴스레터 목록, 키워드 검색(제목+요약), 12개씩 페이지네이션, `force-dynamic` | - | - | - | 2026-05-10 |
-| t-20260510-025 | 화면 | ✅ | 뉴스레터 편집 에디터 (`/admin/edit/[id]`) — 제목/요약/카테고리/썸네일/발행일 입력, Tiptap 본문 편집, PDF 추출 링크 패널, 우측 PDF iframe 미리보기, 발송 예약 모달 | - | t-20260510-021 | 임시저장 / 발행 분기 처리 | 2026-05-10 |
-| t-20260510-026 | 화면 | ✅ | 관리자 대시보드 (`/admin`) — 뉴스레터 총수/발행수/초안수, 구독자 수, 예약 발송 수 통계 카드 | - | - | `force-dynamic` | 2026-05-10 |
-| t-20260510-027 | 화면 | ✅ | 관리자 로그인 페이지 (`/admin/login`) — 비밀번호 입력, 리다이렉트 파라미터 처리 | - | t-20260510-010 | - | 2026-05-10 |
-| t-20260510-028 | 화면 | ✅ | PDF 업로드 페이지 (`/admin/upload`) — 드래그앤드롭, 파일 선택, 업로드 후 에디터로 자동 이동 | - | t-20260510-012 | - | 2026-05-10 |
-| t-20260510-029 | 화면 | ✅ | 구독자 관리 페이지 (`/admin/subscribers`) — 구독자 목록, 개별 추가, CSV 일괄 업로드, 삭제 | - | t-20260510-014 | - | 2026-05-10 |
-| t-20260510-030 | 화면 | ✅ | 발송 예약 관리 페이지 (`/admin/schedule`) — 발행된 뉴스레터 선택, 날짜/시간 설정, 예약 목록, 취소, 즉시 발송 | - | t-20260510-016 | - | 2026-05-10 |
-| t-20260510-031 | 화면 | ✅ | 관리자 공통 레이아웃 + 로그아웃 버튼 (`/admin/layout.tsx`, `LogoutButton.tsx`) | - | t-20260510-011 | - | 2026-05-10 |
-| t-20260510-032 | 개발환경 | ✅ | 샘플 데이터 시드 스크립트 (`scripts/seed.ts`) — 뉴스레터 2개(published), 구독자 2명 생성 | - | t-20260510-003 | node:sqlite로 마이그레이션 완료 | 2026-05-10 |
-| t-20260510-033 | 문서 | ✅ | README.md 작성 — 기술 스택, 실행 방법, 환경변수 설명, Gmail 앱 비밀번호 발급 방법, 전체 워크플로우, 디렉터리 구조 | - | - | - | 2026-05-10 |
-| t-20260510-034 | 문서 | ✅ | airules.md 작성 — AI 에이전트 작업 규칙 (node:sqlite 규칙, force-dynamic, 인증, API 설계, 금지사항 등) | - | - | 에이전트 간 컨텍스트 공유용 | 2026-05-10 |
-| t-20260510-035 | 인프라 | ✅ | Git 저장소 연결 및 초기 커밋 — `claude/newsletter-web-platform-EUadO` 브랜치에 전체 코드 push | - | - | GitHub: riiiiyou/Trend_News | 2026-05-10 |
+| t-20260510-001 | 인프라 | ✅ | Next.js 14 App Router 프로젝트 초기화 (package.json, tsconfig, tailwind, postcss 설정) | Claude | - | Node.js v24 호환 고려 | 2026-05-10 |
+| t-20260510-002 | 인프라 | ✅ | SQLite DB 레이어 구축 (`src/lib/db.ts`) — 싱글톤 커넥션, 스키마 자동 초기화, 타입 정의 | Claude | t-20260510-003 | 초기 better-sqlite3로 구현 | 2026-05-10 |
+| t-20260510-003 | 인프라 | ✅ | DB 패키지 마이그레이션: `better-sqlite3` → `node:sqlite` (Node.js 내장 모듈) | Claude | t-20260510-002 | Windows + Node v24 네이티브 컴파일 오류 해결. `db.pragma()` → `db.exec('PRAGMA ...')` 변경. `@types/node` v22로 업그레이드 | 2026-05-10 |
+| t-20260510-004 | 인프라 | ✅ | `next.config.js` 설정 — `serverComponentsExternalPackages` (pdf-parse) 등록 | Claude | t-20260510-001 | better-sqlite3 제거 후 항목에서도 삭제 | 2026-05-10 |
+| t-20260510-005 | 인프라 | ✅ | `.env.local` 환경변수 파일 생성 (ADMIN_PASSWORD, GMAIL_USER, GMAIL_APP_PASSWORD, NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_TEAM_NAME) | Claude | - | gitignore 처리됨 | 2026-05-10 |
+| t-20260510-006 | 기능 | ✅ | PDF 파싱 라이브러리 구현 (`src/lib/pdf-parser.ts`) — pdf-parse 기반 텍스트 추출, URL 감지, HTML 변환 | Claude | t-20260510-012 | - | 2026-05-10 |
+| t-20260510-007 | 기능 | ✅ | 이메일 발송 모듈 구현 (`src/lib/mailer.ts`) — Nodemailer + Gmail SMTP, HTML 이메일 템플릿 (헤더/본문/푸터, 웹보기 링크, PDF 다운로드 링크) | Claude | t-20260510-008 | BCC 방식으로 단일 발송 | 2026-05-10 |
+| t-20260510-008 | 기능 | ✅ | 자동 발송 스케줄러 구현 (`src/lib/scheduler.ts`) — node-cron 매 1분 실행, scheduled_sends 테이블 폴링, 발송 성공/실패 기록 | Claude | t-20260510-007, t-20260510-009 | - | 2026-05-10 |
+| t-20260510-009 | 인프라 | ✅ | `src/instrumentation.ts` — Next.js 서버 시작 시 스케줄러 1회 초기화 | Claude | t-20260510-008 | Next.js 14 instrumentation hook 활용 | 2026-05-10 |
+| t-20260510-010 | 보안 | ✅ | 관리자 인증 미들웨어 구현 (`src/middleware.ts`) — `/admin/*` 전체 쿠키 기반 보호 (`admin_session=authenticated`), `/admin/login` 제외 | Claude | t-20260510-011 | - | 2026-05-10 |
+| t-20260510-011 | 기능 | ✅ | 인증 API (`/api/auth`) — POST 로그인(환경변수 비밀번호 비교 + 쿠키 발급), DELETE 로그아웃(쿠키 삭제) | Claude | t-20260510-010 | - | 2026-05-10 |
+| t-20260510-012 | 기능 | ✅ | PDF 업로드 API (`/api/upload`) — FormData 수신, 20MB 제한, public/uploads/ 저장, 텍스트 추출, 뉴스레터 draft 생성 | Claude | t-20260510-006 | 업로드 직후 추출 링크를 summary 컬럼에 임시 JSON 저장 | 2026-05-10 |
+| t-20260510-013 | 기능 | ✅ | 뉴스레터 CRUD API (`/api/newsletters`, `/api/newsletters/[id]`) — 목록(status 필터), 단건 조회, 수정(임시저장/발행), 삭제 | Claude | - | - | 2026-05-10 |
+| t-20260510-014 | 기능 | ✅ | 구독자 CRUD API (`/api/subscribers`, `/api/subscribers/[id]`) — 목록, 추가(중복 이메일 방지), 삭제, CSV 일괄 업로드 | Claude | - | - | 2026-05-10 |
+| t-20260510-015 | 기능 | ✅ | 즉시 발송 API (`/api/send`) — 모든 구독자에게 즉시 HTML 이메일 발송, scheduled_sends에 이력 기록 | Claude | t-20260510-007 | - | 2026-05-10 |
+| t-20260510-016 | 기능 | ✅ | 발송 예약 API (`/api/schedule`) — 예약 생성, 목록 조회, 예약 취소 (status=cancelled) | Claude | t-20260510-008 | - | 2026-05-10 |
+| t-20260510-017 | 화면 | ✅ | 앱 공통 레이아웃 (`src/app/layout.tsx`) — Pretendard CDN 폰트, 메타데이터, globals.css 포함 | Claude | - | - | 2026-05-10 |
+| t-20260510-018 | 화면 | ✅ | 전역 스타일 (`src/app/globals.css`) — CSS 변수 테마 (`--point: #5B5BD6`), Tiptap ProseMirror 스타일, 뉴스레터 본문 타이포그래피 | Claude | - | - | 2026-05-10 |
+| t-20260510-019 | 화면 | ✅ | 공통 헤더 컴포넌트 (`src/components/Header.tsx`) — 로고, 홈/아카이브 네비게이션 | Claude | - | - | 2026-05-10 |
+| t-20260510-020 | 화면 | ✅ | 뉴스레터 카드 컴포넌트 (`src/components/NewsletterCard.tsx`) — 썸네일, 카테고리 뱃지, 제목, 요약, 날짜 표시 | Claude | - | - | 2026-05-10 |
+| t-20260510-021 | 화면 | ✅ | Tiptap 에디터 컴포넌트 (`src/components/TiptapEditor.tsx`) — 툴바(굵기/기울임/밑줄/제목/목록/인용/링크), 플레이스홀더 | Claude | t-20260510-025 | SSR 비활성화(dynamic import) | 2026-05-10 |
+| t-20260510-022 | 화면 | ✅ | 홈 페이지 (`/`) — 발행된 뉴스레터 카드 목록, 최신순 정렬, `force-dynamic` | Claude | - | - | 2026-05-10 |
+| t-20260510-023 | 화면 | ✅ | 뉴스레터 상세 페이지 (`/newsletter/[id]`) — HTML 본문 렌더링, PDF 다운로드 버튼, 이전/다음 네비게이션, `force-dynamic` | Claude | - | - | 2026-05-10 |
+| t-20260510-024 | 화면 | ✅ | 아카이브 페이지 (`/archive`) — 전체 뉴스레터 목록, 키워드 검색(제목+요약), 12개씩 페이지네이션, `force-dynamic` | Claude | - | - | 2026-05-10 |
+| t-20260510-025 | 화면 | ✅ | 뉴스레터 편집 에디터 (`/admin/edit/[id]`) — 제목/요약/카테고리/썸네일/발행일 입력, Tiptap 본문 편집, PDF 추출 링크 패널, 우측 PDF iframe 미리보기, 발송 예약 모달 | Claude | t-20260510-021 | 임시저장 / 발행 분기 처리 | 2026-05-10 |
+| t-20260510-026 | 화면 | ✅ | 관리자 대시보드 (`/admin`) — 뉴스레터 총수/발행수/초안수, 구독자 수, 예약 발송 수 통계 카드 | Claude | - | `force-dynamic` | 2026-05-10 |
+| t-20260510-027 | 화면 | ✅ | 관리자 로그인 페이지 (`/admin/login`) — 비밀번호 입력, 리다이렉트 파라미터 처리 | Claude | t-20260510-010 | - | 2026-05-10 |
+| t-20260510-028 | 화면 | ✅ | PDF 업로드 페이지 (`/admin/upload`) — 드래그앤드롭, 파일 선택, 업로드 후 에디터로 자동 이동 | Claude | t-20260510-012 | - | 2026-05-10 |
+| t-20260510-029 | 화면 | ✅ | 구독자 관리 페이지 (`/admin/subscribers`) — 구독자 목록, 개별 추가, CSV 일괄 업로드, 삭제 | Claude | t-20260510-014 | - | 2026-05-10 |
+| t-20260510-030 | 화면 | ✅ | 발송 예약 관리 페이지 (`/admin/schedule`) — 발행된 뉴스레터 선택, 날짜/시간 설정, 예약 목록, 취소, 즉시 발송 | Claude | t-20260510-016 | - | 2026-05-10 |
+| t-20260510-031 | 화면 | ✅ | 관리자 공통 레이아웃 + 로그아웃 버튼 (`/admin/layout.tsx`, `LogoutButton.tsx`) | Claude | t-20260510-011 | - | 2026-05-10 |
+| t-20260510-032 | 개발환경 | ✅ | 샘플 데이터 시드 스크립트 (`scripts/seed.ts`) — 뉴스레터 2개(published), 구독자 2명 생성 | Claude | t-20260510-003 | node:sqlite로 마이그레이션 완료 | 2026-05-10 |
+| t-20260510-033 | 문서 | ✅ | README.md 작성 — 기술 스택, 실행 방법, 환경변수 설명, Gmail 앱 비밀번호 발급 방법, 전체 워크플로우, 디렉터리 구조 | Claude | - | - | 2026-05-10 |
+| t-20260510-034 | 문서 | ✅ | airules.md 작성 — AI 에이전트 작업 규칙 (node:sqlite 규칙, force-dynamic, 인증, API 설계, 금지사항 등) | Claude | - | 에이전트 간 컨텍스트 공유용 | 2026-05-10 |
+| t-20260510-035 | 인프라 | ✅ | Git 저장소 연결 및 초기 커밋 — `claude/newsletter-web-platform-EUadO` 브랜치에 전체 코드 push | Claude | - | GitHub: riiiiyou/Trend_News | 2026-05-10 |
 
 ---
 
