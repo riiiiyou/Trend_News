@@ -79,3 +79,5 @@
 | t-20260510-046 | 보안 | ⬜ | 관리자 세션 만료 처리 — 현재 쿠키에 만료 시간 없음. `maxAge` 설정(예: 8시간) 및 재로그인 유도 처리 추가 | - | t-20260510-010, t-20260510-011 | 보안 강화 | - |
 | t-20260510-047 | 기능 | ⬜ | 발송 재시도 로직 — `status='failed'` 레코드를 관리자가 수동으로 재발송할 수 있는 버튼/API 추가 | - | t-20260510-016, t-20260510-030 | 현재 실패 시 수동 대응 불가 | - |
 | t-20260510-048 | 화면 | ⬜ | 다크모드 지원 — `globals.css` CSS 변수에 `prefers-color-scheme: dark` 미디어쿼리 추가, 배경/텍스트 컬러 다크 팔레트 정의 | - | t-20260510-018 | `--bg`, `--text` 변수 기반이므로 CSS 수정만으로 대응 가능 | - |
+| t-20260510-049 | 인프라 | ✅ | GitHub Actions CI/CD 구성 — main 브랜치 push 시 타입 검사 → Vercel 프로덕션 자동 배포 (`.github/workflows/deploy.yml`) | Claude | t-20260510-043 | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` GitHub Secret 등록 필요 | 2026-05-10 |
+| t-20260510-050 | 인프라 | ✅ | Vercel 배포 환경 대응 — `vercel.json` 생성(Node.js 22, 함수 타임아웃, Cron 설정), DB 경로 `/tmp/data` 전환, 업로드 경로 `/tmp/uploads` 전환, `/api/cron` 엔드포인트 추가 | Claude | t-20260510-049 | Vercel Cron은 Pro 플랜에서 1분 단위 가능. Hobby는 1일 단위. `CRON_SECRET` 환경변수로 무단 호출 방지 | 2026-05-10 |

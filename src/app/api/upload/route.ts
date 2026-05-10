@@ -24,14 +24,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'PDF 파일만 업로드 가능합니다' }, { status: 400 })
     }
 
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+    const uploadsDir = process.env.VERCEL
+      ? '/tmp/uploads'
+      : path.join(process.cwd(), 'public', 'uploads')
     await mkdir(uploadsDir, { recursive: true })
 
     const timestamp = Date.now()
     const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const filename = `${timestamp}_${safeFilename}`
     const filePath = path.join(uploadsDir, filename)
-    const publicPath = `/uploads/${filename}`
+    // Vercel 환경에서는 /tmp 파일을 public URL로 제공할 수 없어 pdf_path를 null로 처리
+    const publicPath = process.env.VERCEL ? null : `/uploads/${filename}`
 
     const buffer = Buffer.from(await file.arrayBuffer())
     await writeFile(filePath, buffer)
@@ -44,7 +47,7 @@ export async function POST(req: NextRequest) {
         `INSERT INTO newsletters (title, content, pdf_path, status)
          VALUES (?, ?, ?, 'draft')`
       )
-      .run(parsed.title, parsed.content, publicPath)
+      .run(parsed.title, parsed.content, publicPath ?? null)
 
     const id = result.lastInsertRowid
 
