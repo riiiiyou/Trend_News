@@ -185,6 +185,10 @@ public/
 }
 ```
 
+## 추가 가이드
+
+- [Windows 로컬 실행 가이드](docs/windows-local-setup.md)
+
 ---
 
 ## 라이선스
