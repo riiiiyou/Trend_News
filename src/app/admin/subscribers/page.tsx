@@ -31,6 +31,10 @@ export default function SubscribersPage() {
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('올바른 이메일 형식을 입력해 주세요 (예: name@example.com)')
+      return
+    }
     setLoading(true)
     const res = await fetch('/api/subscribers', {
       method: 'POST',
@@ -95,10 +99,11 @@ export default function SubscribersPage() {
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--point)]"
           />
           <input
-            type="email"
+            type="text"
+            inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="이메일 *"
+            placeholder="이메일 * (예: name@example.com)"
             required
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--point)]"
           />
