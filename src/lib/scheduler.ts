@@ -2,6 +2,7 @@
 import cron from 'node-cron'
 import { getDb } from './db'
 import { sendMail, buildNewsletterHtml } from './mailer'
+import { createUnsubscribeSignature } from './unsubscribe'
 
 let initialized = false
 
@@ -67,26 +68,30 @@ async function executeSend(send: {
       return
     }
 
-    const emails = subscribers.map((s) => s.email)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
     const teamName = process.env.NEXT_PUBLIC_TEAM_NAME || '팀 뉴스레터'
 
-    const html = buildNewsletterHtml({
-      teamName,
-      title: send.title,
-      content: send.content || '',
-      newsletterId: send.newsletter_id,
-      pdfPath: send.pdf_path,
-      siteUrl,
-    })
+    for (const subscriber of subscribers) {
+      const signature = createUnsubscribeSignature(subscriber.email)
+      const unsubscribeUrl = `${siteUrl}/api/unsubscribe?email=${encodeURIComponent(subscriber.email)}&sig=${signature}`
+      const html = buildNewsletterHtml({
+        teamName,
+        title: send.title,
+        content: send.content || '',
+        newsletterId: send.newsletter_id,
+        pdfPath: send.pdf_path,
+        siteUrl,
+        unsubscribeUrl,
+      })
 
-    await sendMail({ to: emails, subject: `[${teamName}] ${send.title}`, html })
+      await sendMail({ to: subscriber.email, subject: `[${teamName}] ${send.title}`, html })
+    }
 
     db.prepare(
       `UPDATE scheduled_sends SET status='sent', sent_at=?, recipient_count=? WHERE id=?`
-    ).run(new Date().toISOString(), emails.length, send.id)
+    ).run(new Date().toISOString(), subscribers.length, send.id)
 
-    console.log(`[scheduler] Sent newsletter "${send.title}" to ${emails.length} recipients`)
+    console.log(`[scheduler] Sent newsletter "${send.title}" to ${subscribers.length} recipients`)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     db.prepare(
