@@ -1,10 +1,8 @@
 'use client'
 // src/app/admin/upload/page.tsx
 import { useState, useRef, DragEvent, ChangeEvent } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function UploadPage() {
-  const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -36,8 +34,11 @@ export default function UploadPage() {
         setUploading(false)
         return
       }
-      const { id } = await res.json()
-      router.push(`/admin/edit/${id}`)
+      const { id, title, content, links } = await res.json()
+      // Vercel 서버리스 환경에서 Lambda 인스턴스가 달라 DB 조회 실패 가능.
+      // 업로드 결과를 sessionStorage에 보존해 에디터 페이지에서 복원.
+      sessionStorage.setItem(`nl_draft_${id}`, JSON.stringify({ title, content, links }))
+      window.location.href = `/admin/edit/${id}`
     } catch {
       setError('업로드 중 오류가 발생했습니다')
       setUploading(false)
