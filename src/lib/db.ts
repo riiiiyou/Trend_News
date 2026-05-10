@@ -3,7 +3,11 @@ import { DatabaseSync } from 'node:sqlite'
 import path from 'path'
 import fs from 'fs'
 
-const DATA_DIR = path.join(process.cwd(), 'data')
+// Vercel serverless 환경은 process.cwd()가 읽기 전용이므로 /tmp 사용
+const DATA_DIR = process.env.VERCEL
+  ? '/tmp/data'
+  : path.join(process.cwd(), 'data')
+
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true })
 }
