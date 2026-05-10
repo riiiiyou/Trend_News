@@ -2,6 +2,7 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
+  "nodeVersion": "22.x",
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30,
