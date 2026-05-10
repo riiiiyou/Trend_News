@@ -1,11 +1,10 @@
 'use client'
 // src/app/admin/login/page.tsx
 import { useState, FormEvent } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -24,7 +23,7 @@ function LoginForm() {
 
     if (res.ok) {
       const redirect = searchParams.get('redirect') || '/admin'
-      router.push(redirect)
+      window.location.href = redirect
     } else {
       const data = await res.json()
       setError(data.error || '로그인에 실패했습니다')
