@@ -35,6 +35,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: GitHub Secret 등록 여부 확인
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN secret이 등록되지 않았습니다."
+            echo "::error::Vercel 대시보드 → Account Settings → Tokens 에서 토큰을 발급한 뒤"
+            echo "::error::GitHub → Settings → Secrets → Actions 에서 VERCEL_TOKEN 을 등록하세요."
+            exit 1
+          fi
+          if [ -z "$VERCEL_ORG_ID" ]; then
+            echo "::error::VERCEL_ORG_ID secret이 등록되지 않았습니다."
+            echo "::error::로컬에서 'npx vercel link' 실행 후 .vercel/project.json 에서 확인하세요."
+            exit 1
+          fi
+          if [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::error::VERCEL_PROJECT_ID secret이 등록되지 않았습니다."
+            echo "::error::로컬에서 'npx vercel link' 실행 후 .vercel/project.json 에서 확인하세요."
+            exit 1
+          fi
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
       - name: Node.js 22 설정
         uses: actions/setup-node@v4
         with:
