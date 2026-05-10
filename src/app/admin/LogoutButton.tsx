@@ -1,13 +1,10 @@
 'use client'
 // src/app/admin/LogoutButton.tsx
-import { useRouter } from 'next/navigation'
 
 export default function LogoutButton() {
-  const router = useRouter()
-
   const handleLogout = async () => {
     await fetch('/api/auth', { method: 'DELETE' })
-    router.push('/admin/login')
+    window.location.href = '/admin/login'
   }
 
   return (
