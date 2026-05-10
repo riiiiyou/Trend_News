@@ -1,6 +1,6 @@
 'use client'
 // src/app/admin/edit/[id]/EditClient.tsx
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
@@ -52,6 +52,24 @@ export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
   const [newLinkLabel, setNewLinkLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
+
+  // Vercel 서버리스 환경에서 DB 조회 실패 시 sessionStorage에서 업로드 결과 복원
+  useEffect(() => {
+    const key = `nl_draft_${newsletter.id}`
+    const stored = sessionStorage.getItem(key)
+    if (!stored) return
+    try {
+      const draft = JSON.parse(stored) as { title?: string; content?: string; links?: string[] }
+      if (!title && draft.title) setTitle(draft.title)
+      if (!content && draft.content) setContent(draft.content)
+      if (links.length === 0 && draft.links?.length) {
+        setLinks(draft.links.map((url) => ({ url, label: '' })))
+      }
+    } catch { /* empty */ } finally {
+      sessionStorage.removeItem(key)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Schedule modal
   const [showSchedule, setShowSchedule] = useState(false)

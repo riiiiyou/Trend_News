@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       id
     )
 
-    return NextResponse.json({ id, title: parsed.title, links: parsed.links })
+    return NextResponse.json({ id, title: parsed.title, content: parsed.content, links: parsed.links })
   } catch (err) {
     console.error('[upload] Error:', err)
     return NextResponse.json({ error: 'PDF 처리 중 오류가 발생했습니다' }, { status: 500 })
