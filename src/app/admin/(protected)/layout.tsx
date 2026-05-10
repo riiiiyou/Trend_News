@@ -1,6 +1,5 @@
-// src/app/admin/layout.tsx
 import Link from 'next/link'
-import LogoutButton from './LogoutButton'
+import LogoutButton from '../LogoutButton'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
