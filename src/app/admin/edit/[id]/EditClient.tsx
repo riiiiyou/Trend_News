@@ -59,9 +59,10 @@ export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
     const stored = sessionStorage.getItem(key)
     if (!stored) return
     try {
-      const draft = JSON.parse(stored) as { title?: string; content?: string; links?: string[] }
+      const draft = JSON.parse(stored) as { title?: string; content?: string; links?: string[]; thumbnailUrl?: string }
       if (!title && draft.title) setTitle(draft.title)
       if (!content && draft.content) setContent(draft.content)
+      if (!thumbnailUrl && draft.thumbnailUrl) setThumbnailUrl(draft.thumbnailUrl)
       if (links.length === 0 && draft.links?.length) {
         setLinks(draft.links.map((url) => ({ url, label: '' })))
       }
