@@ -19,10 +19,16 @@ export default function SubscribersPage() {
   const csvRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
+    try {
+      const cached = localStorage.getItem('nl_subscribers')
+      if (cached) setSubscribers(JSON.parse(cached))
+    } catch { /* empty */ }
+
     const res = await fetch('/api/subscribers')
     if (res.ok) {
       const data = await res.json()
       setSubscribers(data)
+      try { localStorage.setItem('nl_subscribers', JSON.stringify(data)) } catch { /* empty */ }
     }
   }
 
@@ -58,7 +64,11 @@ export default function SubscribersPage() {
     if (!confirm('이 구독자를 삭제하시겠습니까?')) return
     const res = await fetch(`/api/subscribers/${id}`, { method: 'DELETE' })
     if (res.ok) {
-      setSubscribers((prev) => prev.filter((s) => s.id !== id))
+      setSubscribers((prev) => {
+        const updated = prev.filter((s) => s.id !== id)
+        try { localStorage.setItem('nl_subscribers', JSON.stringify(updated)) } catch { /* empty */ }
+        return updated
+      })
     }
   }
 

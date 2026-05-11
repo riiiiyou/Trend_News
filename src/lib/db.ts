@@ -22,8 +22,25 @@ export function getDb(): DatabaseSync {
     db.exec('PRAGMA journal_mode = WAL')
     db.exec('PRAGMA foreign_keys = ON')
     initializeSchema(db)
+    seedInitialSubscribers(db)
   }
   return db
+}
+
+function seedInitialSubscribers(db: DatabaseSync) {
+  const raw = process.env.INITIAL_SUBSCRIBERS
+  if (!raw) return
+  try {
+    const insert = db.prepare(`INSERT OR IGNORE INTO subscribers (name, email) VALUES (?, ?)`)
+    for (const row of raw.split(';')) {
+      const parts = row.trim().split(',')
+      const email = (parts[1] ?? parts[0]).trim()
+      const name = parts[1] ? parts[0].trim() : null
+      if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        insert.run(name, email)
+      }
+    }
+  } catch { /* empty */ }
 }
 
 function initializeSchema(db: DatabaseSync) {

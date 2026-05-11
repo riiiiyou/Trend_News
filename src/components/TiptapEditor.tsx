@@ -5,7 +5,8 @@ import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Underline from '@tiptap/extension-underline'
 import Placeholder from '@tiptap/extension-placeholder'
-import { useEffect } from 'react'
+import Image from '@tiptap/extension-image'
+import { useEffect, useRef } from 'react'
 
 type Props = {
   content: string
@@ -14,6 +15,8 @@ type Props = {
 }
 
 export default function TiptapEditor({ content, onChange, placeholder }: Props) {
+  const imgInputRef = useRef<HTMLInputElement>(null)
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -23,6 +26,7 @@ export default function TiptapEditor({ content, onChange, placeholder }: Props) 
         HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
       }),
       Placeholder.configure({ placeholder: placeholder || '본문을 입력하세요...' }),
+      Image.configure({ HTMLAttributes: { class: 'max-w-full h-auto rounded-lg my-2' } }),
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -54,6 +58,18 @@ export default function TiptapEditor({ content, onChange, placeholder }: Props) 
     else editor.chain().focus().unsetLink().run()
   }
 
+  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const src = ev.target?.result as string
+      if (src) editor.chain().focus().setImage({ src }).run()
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
       {/* Toolbar */}
@@ -72,6 +88,9 @@ export default function TiptapEditor({ content, onChange, placeholder }: Props) 
         <div className="w-px bg-gray-200 mx-1" />
         <button type="button" onClick={setLink} className={btn(editor.isActive('link'))}>🔗 링크</button>
         <button type="button" onClick={() => editor.chain().focus().unsetLink().run()} className="px-2.5 py-1 text-sm rounded bg-gray-100 text-gray-700 hover:bg-gray-200">링크 제거</button>
+        <div className="w-px bg-gray-200 mx-1" />
+        <input ref={imgInputRef} type="file" accept=".jpg,.jpeg,.png,.gif,.webp" className="hidden" onChange={handleImageFile} />
+        <button type="button" onClick={() => imgInputRef.current?.click()} className={btn(false)}>🖼️ 이미지</button>
       </div>
       <div className="p-4 bg-white">
         <EditorContent editor={editor} />
