@@ -87,27 +87,33 @@ export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
   const save = async (status: 'draft' | 'published') => {
     setSaving(true)
     setSaveMsg('')
-    const res = await fetch(`/api/newsletters/${newsletter.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title,
-        summary,
-        content,
-        category: categories,
-        thumbnail_url: thumbnailUrl || null,
-        pdf_path: newsletter.pdf_path,
-        published_at: publishedAt || null,
-        status,
-      }),
-    })
-    setSaving(false)
-    if (res.ok) {
-      setSaveMsg(status === 'published' ? '✅ 발행되었습니다' : '💾 저장되었습니다')
-      if (status === 'published') setShowSchedule(true)
-      setTimeout(() => setSaveMsg(''), 3000)
-    } else {
-      setSaveMsg('❌ 저장 실패')
+    try {
+      const res = await fetch(`/api/newsletters/${newsletter.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          summary,
+          content,
+          category: categories,
+          thumbnail_url: thumbnailUrl || null,
+          pdf_path: newsletter.pdf_path,
+          published_at: publishedAt || null,
+          status,
+        }),
+      })
+      if (res.ok) {
+        setSaveMsg(status === 'published' ? '✅ 발행되었습니다' : '💾 저장되었습니다')
+        if (status === 'published') setShowSchedule(true)
+        setTimeout(() => setSaveMsg(''), 4000)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setSaveMsg(`❌ 저장 실패 (${res.status}${data?.error ? ': ' + data.error : ''})`)
+      }
+    } catch (err) {
+      setSaveMsg(`❌ 네트워크 오류: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setSaving(false)
     }
   }
 
