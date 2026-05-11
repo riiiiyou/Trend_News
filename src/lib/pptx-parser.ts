@@ -171,20 +171,30 @@ export async function parsePptx(buffer: Buffer): Promise<PptxParseResult> {
     slideLinks.forEach((l) => linkSet.add(l))
   }
 
-  // First image in ppt/media/ as thumbnail
+  // Thumbnail: 1) docProps/thumbnail.* (PowerPoint 자동 생성) 2) ppt/media/ 첫 이미지
   const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp']
   let thumbnailBuffer: Buffer | null = null
   let thumbnailExt: string | null = null
 
-  const mediaFiles = Object.keys(zip.files).filter((name) => {
-    if (!name.startsWith('ppt/media/')) return false
-    return imageExts.includes(path.extname(name).toLowerCase())
+  const docThumb = Object.keys(zip.files).find((name) => {
+    const lower = name.toLowerCase()
+    return lower.startsWith('docprops/thumbnail') && imageExts.includes(path.extname(lower))
   })
 
-  if (mediaFiles.length > 0) {
-    const imgData = await zip.files[mediaFiles[0]].async('nodebuffer')
+  if (docThumb) {
+    const imgData = await zip.files[docThumb].async('nodebuffer')
     thumbnailBuffer = Buffer.from(imgData)
-    thumbnailExt = path.extname(mediaFiles[0]).toLowerCase()
+    thumbnailExt = path.extname(docThumb).toLowerCase()
+  } else {
+    const mediaFiles = Object.keys(zip.files).filter((name) => {
+      if (!name.startsWith('ppt/media/')) return false
+      return imageExts.includes(path.extname(name).toLowerCase())
+    })
+    if (mediaFiles.length > 0) {
+      const imgData = await zip.files[mediaFiles[0]].async('nodebuffer')
+      thumbnailBuffer = Buffer.from(imgData)
+      thumbnailExt = path.extname(mediaFiles[0]).toLowerCase()
+    }
   }
 
   return {
