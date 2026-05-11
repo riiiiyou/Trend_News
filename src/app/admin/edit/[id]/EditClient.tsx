@@ -96,6 +96,22 @@ export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
       })
       if (res.ok) {
         if (status === 'published') {
+          // Lambda isolation: save data to sessionStorage so detail page can render
+          sessionStorage.setItem(
+            `nl_published_${newsletter.id}`,
+            JSON.stringify({
+              id: newsletter.id,
+              title,
+              summary: summary || null,
+              content: content || null,
+              category: JSON.stringify(categories),
+              thumbnail_url: thumbnailUrl || null,
+              pdf_path: newsletter.pdf_path,
+              published_at: publishedAt || null,
+              status: 'published',
+              created_at: new Date().toISOString(),
+            })
+          )
           window.location.href = `/newsletter/${newsletter.id}`
           return
         }
