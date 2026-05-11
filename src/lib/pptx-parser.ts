@@ -2,6 +2,20 @@
 import JSZip from 'jszip'
 import path from 'path'
 
+function isValidRasterImage(buf: Buffer): boolean {
+  if (buf.length < 12) return false
+  // JPEG: FF D8 FF
+  if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return true
+  // PNG: 89 50 4E 47
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return true
+  // GIF: GIF8
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return true
+  // WebP: RIFF....WEBP
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+      buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return true
+  return false
+}
+
 export interface PptxParseResult {
   title: string
   content: string
@@ -171,29 +185,32 @@ export async function parsePptx(buffer: Buffer): Promise<PptxParseResult> {
     slideLinks.forEach((l) => linkSet.add(l))
   }
 
-  // Thumbnail: 1) docProps/thumbnail.* (PowerPoint 자동 생성) 2) ppt/media/ 첫 이미지
+  // Thumbnail: 1) docProps/thumbnail.* 2) ppt/media/ — magic byte 검증으로 유효한 래스터만 사용
   const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp']
   let thumbnailBuffer: Buffer | null = null
   let thumbnailExt: string | null = null
+
+  const candidates: string[] = []
 
   const docThumb = Object.keys(zip.files).find((name) => {
     const lower = name.toLowerCase()
     return lower.startsWith('docprops/thumbnail') && imageExts.includes(path.extname(lower))
   })
+  if (docThumb) candidates.push(docThumb)
 
-  if (docThumb) {
-    const imgData = await zip.files[docThumb].async('nodebuffer')
-    thumbnailBuffer = Buffer.from(imgData)
-    thumbnailExt = path.extname(docThumb).toLowerCase()
-  } else {
-    const mediaFiles = Object.keys(zip.files).filter((name) => {
-      if (!name.startsWith('ppt/media/')) return false
-      return imageExts.includes(path.extname(name).toLowerCase())
-    })
-    if (mediaFiles.length > 0) {
-      const imgData = await zip.files[mediaFiles[0]].async('nodebuffer')
-      thumbnailBuffer = Buffer.from(imgData)
-      thumbnailExt = path.extname(mediaFiles[0]).toLowerCase()
+  const mediaFiles = Object.keys(zip.files).filter((name) => {
+    if (!name.startsWith('ppt/media/')) return false
+    return imageExts.includes(path.extname(name).toLowerCase())
+  })
+  candidates.push(...mediaFiles)
+
+  for (const candidate of candidates) {
+    const imgData = await zip.files[candidate].async('nodebuffer')
+    const buf = Buffer.from(imgData)
+    if (isValidRasterImage(buf)) {
+      thumbnailBuffer = buf
+      thumbnailExt = path.extname(candidate).toLowerCase()
+      break
     }
   }
 

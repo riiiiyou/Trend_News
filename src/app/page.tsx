@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { getDb } from '@/lib/db'
 import Header from '@/components/Header'
 import NewsletterCard from '@/components/NewsletterCard'
+import NewsletterRegistryFallback from '@/components/NewsletterRegistryFallback'
 import type { Newsletter } from '@/lib/db'
 
 const ALL_CATEGORIES = ['업계동향', '팀소식', '기술트렌드', '공지사항']
@@ -68,17 +69,14 @@ export default function HomePage({ searchParams }: Props) {
           ))}
         </div>
 
-        {newsletters.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <div className="text-5xl mb-4">📭</div>
-            <p>아직 발행된 뉴스레터가 없습니다.</p>
-          </div>
-        ) : (
+        {newsletters.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {newsletters.map((n) => (
               <NewsletterCard key={n.id} {...n} />
             ))}
           </div>
+        ) : (
+          <NewsletterRegistryFallback />
         )}
       </main>
     </>
