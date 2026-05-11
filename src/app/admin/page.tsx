@@ -63,7 +63,7 @@ export default function AdminDashboard() {
           className="inline-flex items-center gap-2 px-5 py-2.5 text-white text-sm font-medium rounded-lg"
           style={{ background: 'var(--point)' }}
         >
-          📤 PDF 업로드
+          📤 파일 업로드
         </Link>
         <Link
           href="/admin/subscribers"

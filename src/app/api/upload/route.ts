@@ -5,6 +5,14 @@ import path from 'path'
 import { parsePptx } from '@/lib/pptx-parser'
 import { getDb } from '@/lib/db'
 
+const MIME_MAP: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+}
+
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
@@ -25,28 +33,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'PPT 또는 PPTX 파일만 업로드 가능합니다' }, { status: 400 })
     }
 
-    const uploadsDir = process.env.VERCEL
-      ? '/tmp/uploads'
-      : path.join(process.cwd(), 'public', 'uploads')
-    await mkdir(uploadsDir, { recursive: true })
-
-    const timestamp = Date.now()
-    const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const filename = `${timestamp}_${safeFilename}`
-    const filePath = path.join(uploadsDir, filename)
-
     const buffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(filePath, buffer)
+
+    // Save original file locally only (Vercel /tmp is not publicly accessible)
+    if (!process.env.VERCEL) {
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+      await mkdir(uploadsDir, { recursive: true })
+      const safeFilename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+      await writeFile(path.join(uploadsDir, safeFilename), buffer)
+    }
 
     const parsed = await parsePptx(buffer)
 
-    // Save thumbnail image
+    // Convert thumbnail to base64 data URL (works on Vercel — no public file serving needed)
     let thumbnailUrl: string | null = null
-    if (parsed.thumbnailBuffer && parsed.thumbnailExt && !process.env.VERCEL) {
-      const thumbFilename = `${timestamp}_thumb${parsed.thumbnailExt}`
-      const thumbPath = path.join(uploadsDir, thumbFilename)
-      await writeFile(thumbPath, parsed.thumbnailBuffer)
-      thumbnailUrl = `/uploads/${thumbFilename}`
+    if (parsed.thumbnailBuffer && parsed.thumbnailExt) {
+      // Skip if over 1MB to avoid oversized DB values / sessionStorage
+      if (parsed.thumbnailBuffer.length <= 1024 * 1024) {
+        const mime = MIME_MAP[parsed.thumbnailExt] ?? 'image/jpeg'
+        thumbnailUrl = `data:${mime};base64,${parsed.thumbnailBuffer.toString('base64')}`
+      }
     }
 
     const db = getDb()
