@@ -1,7 +1,6 @@
 'use client'
 // src/app/admin/edit/[id]/EditClient.tsx
-import { useState, useEffect, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 
 const TiptapEditor = dynamic(() => import('@/components/TiptapEditor'), { ssr: false })
@@ -34,7 +33,6 @@ function parseLinks(raw: string | null): Link[] {
 }
 
 export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
-  const router = useRouter()
   const initialCategories: string[] = (() => {
     try { return JSON.parse(newsletter.category || '[]') } catch { return [] }
   })()
@@ -72,12 +70,6 @@ export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Schedule modal
-  const [showSchedule, setShowSchedule] = useState(false)
-  const [scheduleDate, setScheduleDate] = useState('')
-  const [scheduleTime, setScheduleTime] = useState('09:00')
-  const [scheduling, setScheduling] = useState(false)
-
   const toggleCategory = (cat: string) => {
     setCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
@@ -87,27 +79,36 @@ export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
   const save = async (status: 'draft' | 'published') => {
     setSaving(true)
     setSaveMsg('')
-    const res = await fetch(`/api/newsletters/${newsletter.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title,
-        summary,
-        content,
-        category: categories,
-        thumbnail_url: thumbnailUrl || null,
-        pdf_path: newsletter.pdf_path,
-        published_at: publishedAt || null,
-        status,
-      }),
-    })
-    setSaving(false)
-    if (res.ok) {
-      setSaveMsg(status === 'published' ? '✅ 발행되었습니다' : '💾 저장되었습니다')
-      if (status === 'published') setShowSchedule(true)
-      setTimeout(() => setSaveMsg(''), 3000)
-    } else {
-      setSaveMsg('❌ 저장 실패')
+    try {
+      const res = await fetch(`/api/newsletters/${newsletter.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          summary,
+          content,
+          category: categories,
+          thumbnail_url: thumbnailUrl || null,
+          pdf_path: newsletter.pdf_path,
+          published_at: publishedAt || null,
+          status,
+        }),
+      })
+      if (res.ok) {
+        if (status === 'published') {
+          window.location.href = `/newsletter/${newsletter.id}`
+          return
+        }
+        setSaveMsg('💾 저장되었습니다')
+        setTimeout(() => setSaveMsg(''), 4000)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setSaveMsg(`❌ 저장 실패 (${res.status}${data?.error ? ': ' + data.error : ''})`)
+      }
+    } catch (err) {
+      setSaveMsg(`❌ 네트워크 오류: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -122,23 +123,6 @@ export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
     setLinks((prev) => [...prev, { url: newLinkUrl, label: newLinkLabel }])
     setNewLinkUrl('')
     setNewLinkLabel('')
-  }
-
-  const scheduleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!scheduleDate) return
-    setScheduling(true)
-    const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}:00+09:00`).toISOString()
-    const res = await fetch('/api/schedule', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newsletter_id: newsletter.id, scheduled_at: scheduledAt }),
-    })
-    setScheduling(false)
-    if (res.ok) {
-      setShowSchedule(false)
-      router.push('/admin/schedule')
-    }
   }
 
   return (
@@ -311,70 +295,21 @@ export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
         </div>
       </div>
 
-      {/* PDF preview column */}
+      {/* Thumbnail preview column */}
       <div className="hidden xl:block">
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">📄 PDF 원본 미리보기</h2>
-        {newsletter.pdf_path ? (
-          <iframe
-            src={newsletter.pdf_path}
-            className="w-full h-[calc(100vh-160px)] rounded-xl border border-gray-200"
-            title="PDF Preview"
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">🖼️ 썸네일 미리보기</h2>
+        {thumbnailUrl ? (
+          <img
+            src={thumbnailUrl}
+            alt="썸네일"
+            className="w-full rounded-xl border border-gray-200 object-contain max-h-[calc(100vh-160px)]"
           />
         ) : (
           <div className="flex items-center justify-center h-64 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-sm">
-            PDF 파일이 없습니다
+            썸네일 이미지가 없습니다
           </div>
         )}
       </div>
-
-      {/* Schedule modal */}
-      {showSchedule && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
-            <h3 className="font-bold text-lg text-gray-900 mb-1">📅 발송 예약</h3>
-            <p className="text-sm text-gray-500 mb-4">발행된 뉴스레터를 구독자에게 발송할 시간을 설정하세요</p>
-            <form onSubmit={scheduleSubmit} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">발송 날짜</label>
-                <input
-                  type="date"
-                  value={scheduleDate}
-                  onChange={(e) => setScheduleDate(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--point)]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">발송 시간 (KST)</label>
-                <input
-                  type="time"
-                  value={scheduleTime}
-                  onChange={(e) => setScheduleTime(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--point)]"
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSchedule(false)}
-                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50"
-                >
-                  나중에
-                </button>
-                <button
-                  type="submit"
-                  disabled={scheduling}
-                  className="flex-1 px-4 py-2 text-white text-sm rounded-lg disabled:opacity-50"
-                  style={{ background: 'var(--point)' }}
-                >
-                  {scheduling ? '예약 중...' : '예약 확정'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
