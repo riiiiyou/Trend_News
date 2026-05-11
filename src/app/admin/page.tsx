@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { getDb } from '@/lib/db'
 import Link from 'next/link'
 import type { Newsletter, ScheduledSend } from '@/lib/db'
+import AdminNewsletterFallback from '@/components/AdminNewsletterFallback'
 
 export default function AdminDashboard() {
   const db = getDb()
@@ -90,7 +91,7 @@ export default function AdminDashboard() {
           </div>
           <div className="divide-y divide-gray-50">
             {recentNewsletters.length === 0 ? (
-              <p className="p-5 text-sm text-gray-400">뉴스레터가 없습니다</p>
+              <AdminNewsletterFallback />
             ) : (
               recentNewsletters.map((n) => (
                 <div key={n.id} className="px-5 py-3 flex items-center justify-between gap-3">
