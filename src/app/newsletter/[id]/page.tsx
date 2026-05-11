@@ -1,14 +1,21 @@
+'use client'
 // src/app/newsletter/[id]/page.tsx
-export const dynamic = 'force-dynamic'
-
-import { notFound } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { getDb } from '@/lib/db'
 import Header from '@/components/Header'
-import type { Newsletter } from '@/lib/db'
 
-type Props = {
-  params: { id: string }
+type Newsletter = {
+  id: number
+  title: string
+  summary: string | null
+  content: string | null
+  category: string
+  thumbnail_url: string | null
+  pdf_path: string | null
+  published_at: string | null
+  status: string
+  created_at: string
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -18,21 +25,66 @@ const CATEGORY_EMOJI: Record<string, string> = {
   공지사항: '📢',
 }
 
-export default function NewsletterDetailPage({ params }: Props) {
-  const db = getDb()
-  const newsletter = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(params.id) as Newsletter | undefined
+export default function NewsletterDetailPage() {
+  const params = useParams()
+  const id = params.id as string
+  const [newsletter, setNewsletter] = useState<Newsletter | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [missing, setMissing] = useState(false)
 
-  if (!newsletter || newsletter.status !== 'published') {
-    notFound()
+  useEffect(() => {
+    async function load() {
+      // Try API first
+      try {
+        const res = await fetch(`/api/newsletters/${id}`)
+        if (res.ok) {
+          const data = await res.json() as Newsletter
+          if (data.status === 'published') {
+            setNewsletter(data)
+            setLoading(false)
+            return
+          }
+        }
+      } catch { /* Lambda isolation — try sessionStorage */ }
+
+      // Fallback: sessionStorage saved at publish time
+      try {
+        const stored = sessionStorage.getItem(`nl_published_${id}`)
+        if (stored) {
+          setNewsletter(JSON.parse(stored) as Newsletter)
+          setLoading(false)
+          return
+        }
+      } catch { /* empty */ }
+
+      setMissing(true)
+      setLoading(false)
+    }
+    load()
+  }, [id])
+
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <main className="max-w-4xl mx-auto px-4 py-10">
+          <div className="text-center text-gray-400 py-24">로딩 중...</div>
+        </main>
+      </>
+    )
   }
 
-  const prev = db
-    .prepare(`SELECT id, title FROM newsletters WHERE id < ? AND status='published' ORDER BY id DESC LIMIT 1`)
-    .get(params.id) as { id: number; title: string } | undefined
-
-  const next = db
-    .prepare(`SELECT id, title FROM newsletters WHERE id > ? AND status='published' ORDER BY id ASC LIMIT 1`)
-    .get(params.id) as { id: number; title: string } | undefined
+  if (missing || !newsletter) {
+    return (
+      <>
+        <Header />
+        <main className="max-w-4xl mx-auto px-4 py-10 text-center">
+          <p className="text-gray-500 mb-4">뉴스레터를 찾을 수 없습니다</p>
+          <Link href="/" className="text-sm text-[var(--point)]">← 목록으로</Link>
+        </main>
+      </>
+    )
+  }
 
   const categories: string[] = (() => {
     try { return JSON.parse(newsletter.category || '[]') } catch { return [] }
@@ -40,22 +92,18 @@ export default function NewsletterDetailPage({ params }: Props) {
 
   const displayDate = newsletter.published_at || newsletter.created_at
   const formattedDate = displayDate
-    ? new Date(displayDate).toLocaleDateString('ko-KR', {
-        year: 'numeric', month: 'long', day: 'numeric',
-      })
+    ? new Date(displayDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
     : ''
 
   return (
     <>
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-10">
-        {/* Back */}
         <Link href="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-[var(--point)] mb-6 transition-colors">
           ← 목록으로
         </Link>
 
         <article>
-          {/* Categories */}
           <div className="flex flex-wrap gap-2 mb-4">
             {categories.map((cat) => (
               <span
@@ -68,12 +116,10 @@ export default function NewsletterDetailPage({ params }: Props) {
             ))}
           </div>
 
-          {/* Title */}
           <h1 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
             {newsletter.title}
           </h1>
 
-          {/* Meta */}
           <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
             <p className="text-sm text-gray-400">{formattedDate}</p>
             {newsletter.pdf_path && (
@@ -83,12 +129,11 @@ export default function NewsletterDetailPage({ params }: Props) {
                 className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors"
                 style={{ borderColor: 'var(--point)', color: 'var(--point)' }}
               >
-                📄 PDF 원본 다운로드
+                📄 원본 다운로드
               </a>
             )}
           </div>
 
-          {/* Thumbnail */}
           {newsletter.thumbnail_url && (
             <div className="mb-8 rounded-xl overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -96,36 +141,11 @@ export default function NewsletterDetailPage({ params }: Props) {
             </div>
           )}
 
-          {/* Content */}
           <div
             className="newsletter-content text-gray-800 leading-relaxed"
             dangerouslySetInnerHTML={{ __html: newsletter.content || '' }}
           />
         </article>
-
-        {/* Navigation */}
-        <div className="mt-12 pt-8 border-t border-gray-100 grid grid-cols-2 gap-4">
-          <div>
-            {prev && (
-              <Link href={`/newsletter/${prev.id}`} className="group flex flex-col gap-1">
-                <span className="text-xs text-gray-400">← 이전 호</span>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-[var(--point)] transition-colors line-clamp-2">
-                  {prev.title}
-                </span>
-              </Link>
-            )}
-          </div>
-          <div className="text-right">
-            {next && (
-              <Link href={`/newsletter/${next.id}`} className="group flex flex-col gap-1 items-end">
-                <span className="text-xs text-gray-400">다음 호 →</span>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-[var(--point)] transition-colors line-clamp-2">
-                  {next.title}
-                </span>
-              </Link>
-            )}
-          </div>
-        </div>
       </main>
     </>
   )
