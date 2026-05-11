@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '파일 크기는 50MB 이하여야 합니다' }, { status: 400 })
     }
 
-    if (!file.name.toLowerCase().endsWith('.pptx')) {
-      return NextResponse.json({ error: 'PPTX 파일만 업로드 가능합니다' }, { status: 400 })
+    const nameLower = file.name.toLowerCase()
+    if (!nameLower.endsWith('.pptx') && !nameLower.endsWith('.ppt')) {
+      return NextResponse.json({ error: 'PPT 또는 PPTX 파일만 업로드 가능합니다' }, { status: 400 })
     }
 
     const uploadsDir = process.env.VERCEL
@@ -72,6 +73,14 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('[upload] Error:', err)
-    return NextResponse.json({ error: 'PPTX 처리 중 오류가 발생했습니다' }, { status: 500 })
+    const msg = err instanceof Error ? err.message : String(err)
+    // Binary .ppt (pre-Office 2007) cannot be parsed as ZIP
+    if (msg.includes('not a zip') || msg.includes('invalid zip') || msg.includes('End of central directory')) {
+      return NextResponse.json(
+        { error: '구형 PPT 바이너리 형식은 지원하지 않습니다. PowerPoint에서 "다른 이름으로 저장 → .pptx"로 변환 후 업로드해 주세요.' },
+        { status: 400 }
+      )
+    }
+    return NextResponse.json({ error: `파일 처리 중 오류: ${msg}` }, { status: 500 })
   }
 }
