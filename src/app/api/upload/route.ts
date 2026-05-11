@@ -29,13 +29,32 @@ export async function POST(req: NextRequest) {
     }
 
     const nameLower = file.name.toLowerCase()
-    if (!nameLower.endsWith('.pptx') && !nameLower.endsWith('.ppt')) {
-      return NextResponse.json({ error: 'PPT 또는 PPTX 파일만 업로드 가능합니다' }, { status: 400 })
+    const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(e => nameLower.endsWith(e))
+    const isPpt = nameLower.endsWith('.pptx') || nameLower.endsWith('.ppt')
+
+    if (!isImage && !isPpt) {
+      return NextResponse.json({ error: 'PPT, PPTX 또는 이미지(JPG, PNG) 파일만 업로드 가능합니다' }, { status: 400 })
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // Save original file locally only (Vercel /tmp is not publicly accessible)
+    // Image upload: create blank newsletter with thumbnail
+    if (isImage) {
+      const ext = path.extname(nameLower)
+      const mime = MIME_MAP[ext] ?? 'image/jpeg'
+      const thumbnailUrl = file.size <= 2 * 1024 * 1024
+        ? `data:${mime};base64,${buffer.toString('base64')}`
+        : null
+
+      const db = getDb()
+      const result = db
+        .prepare(`INSERT INTO newsletters (title, content, thumbnail_url, pdf_path, status) VALUES (?, ?, ?, ?, 'draft')`)
+        .run('제목을 입력하세요', '', thumbnailUrl, null)
+
+      return NextResponse.json({ id: result.lastInsertRowid, title: '제목을 입력하세요', content: '', links: [], thumbnailUrl })
+    }
+
+    // Save original PPT file locally only (Vercel /tmp is not publicly accessible)
     if (!process.env.VERCEL) {
       const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
       await mkdir(uploadsDir, { recursive: true })
@@ -48,7 +67,6 @@ export async function POST(req: NextRequest) {
     // Convert thumbnail to base64 data URL (works on Vercel — no public file serving needed)
     let thumbnailUrl: string | null = null
     if (parsed.thumbnailBuffer && parsed.thumbnailExt) {
-      // Skip if over 1MB to avoid oversized DB values / sessionStorage
       if (parsed.thumbnailBuffer.length <= 1024 * 1024) {
         const mime = MIME_MAP[parsed.thumbnailExt] ?? 'image/jpeg'
         thumbnailUrl = `data:${mime};base64,${parsed.thumbnailBuffer.toString('base64')}`
@@ -57,10 +75,7 @@ export async function POST(req: NextRequest) {
 
     const db = getDb()
     const result = db
-      .prepare(
-        `INSERT INTO newsletters (title, content, thumbnail_url, pdf_path, status)
-         VALUES (?, ?, ?, ?, 'draft')`
-      )
+      .prepare(`INSERT INTO newsletters (title, content, thumbnail_url, pdf_path, status) VALUES (?, ?, ?, ?, 'draft')`)
       .run(parsed.title, parsed.content, thumbnailUrl, null)
 
     const id = result.lastInsertRowid
@@ -70,13 +85,7 @@ export async function POST(req: NextRequest) {
       id
     )
 
-    return NextResponse.json({
-      id,
-      title: parsed.title,
-      content: parsed.content,
-      links: parsed.links,
-      thumbnailUrl,
-    })
+    return NextResponse.json({ id, title: parsed.title, content: parsed.content, links: parsed.links, thumbnailUrl })
   } catch (err) {
     console.error('[upload] Error:', err)
     const msg = err instanceof Error ? err.message : String(err)

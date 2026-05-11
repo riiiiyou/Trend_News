@@ -112,6 +112,15 @@ export default function EditClient({ newsletter }: { newsletter: Newsletter }) {
               created_at: new Date().toISOString(),
             })
           )
+          // Also update localStorage registry (for home page list — no large thumbnail)
+          try {
+            const registry: {id:number;title:string;summary:string|null;category:string;published_at:string|null;created_at:string;status:string}[] =
+              JSON.parse(localStorage.getItem('nl_registry') || '[]')
+            const meta = { id: newsletter.id, title, summary: summary||null, category: JSON.stringify(categories), published_at: publishedAt||null, created_at: new Date().toISOString(), status: 'published' }
+            const idx = registry.findIndex(n => n.id === newsletter.id)
+            if (idx >= 0) registry[idx] = meta; else registry.unshift(meta)
+            localStorage.setItem('nl_registry', JSON.stringify(registry.slice(0, 50)))
+          } catch { /* empty */ }
           window.location.href = `/newsletter/${newsletter.id}`
           return
         }
