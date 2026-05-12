@@ -1,26 +1,23 @@
 // src/app/api/newsletters/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { db } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const db = getDb()
-    const newsletter = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(params.id)
-    if (!newsletter) {
-      return NextResponse.json({ error: '찾을 수 없습니다' }, { status: 404 })
-    }
+    const result = await db.query('SELECT * FROM newsletters WHERE id = $1', [params.id])
+    const newsletter = result.rows[0]
+    if (!newsletter) return NextResponse.json({ error: '찾을 수 없습니다' }, { status: 404 })
 
-    // Prev / next navigation
-    const prev = db
-      .prepare(`SELECT id, title FROM newsletters WHERE id < ? AND status='published' ORDER BY id DESC LIMIT 1`)
-      .get(params.id)
-    const next = db
-      .prepare(`SELECT id, title FROM newsletters WHERE id > ? AND status='published' ORDER BY id ASC LIMIT 1`)
-      .get(params.id)
+    const prev = (await db.query(
+      `SELECT id, title FROM newsletters WHERE id < $1 AND status='published' ORDER BY id DESC LIMIT 1`, [params.id]
+    )).rows[0] || null
+    const next = (await db.query(
+      `SELECT id, title FROM newsletters WHERE id > $1 AND status='published' ORDER BY id ASC LIMIT 1`, [params.id]
+    )).rows[0] || null
 
-    return NextResponse.json({ ...newsletter as object, prev, next })
+    return NextResponse.json({ ...newsletter, prev, next })
   } catch (err) {
     console.error('[newsletters/[id] GET]', err)
     return NextResponse.json({ error: '서버 오류' }, { status: 500 })
@@ -29,47 +26,29 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const db = getDb()
     const body = await req.json()
     const { title, summary, content, category, thumbnail_url, pdf_path, published_at, status } = body
 
-    const existing = db.prepare('SELECT id FROM newsletters WHERE id = ?').get(params.id)
+    const existing = (await db.query('SELECT id FROM newsletters WHERE id = $1', [params.id])).rows[0]
     if (!existing) {
-      // Lambda isolation: newsletter may live in a different instance's DB — INSERT here
-      db.prepare(
+      await db.query(
         `INSERT INTO newsletters (id, title, summary, content, category, thumbnail_url, pdf_path, published_at, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(
-        parseInt(params.id),
-        title,
-        summary || null,
-        content || null,
-        category ? JSON.stringify(category) : '[]',
-        thumbnail_url || null,
-        pdf_path || null,
-        published_at || null,
-        status || 'draft'
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [parseInt(params.id), title, summary || null, content || null,
+         category ? JSON.stringify(category) : '[]',
+         thumbnail_url || null, pdf_path || null, published_at || null, status || 'draft']
       )
     } else {
-      db.prepare(
-        `UPDATE newsletters SET
-          title=?, summary=?, content=?, category=?, thumbnail_url=?,
-          pdf_path=?, published_at=?, status=?
-         WHERE id=?`
-      ).run(
-        title,
-        summary || null,
-        content || null,
-        category ? JSON.stringify(category) : '[]',
-        thumbnail_url || null,
-        pdf_path || null,
-        published_at || null,
-        status || 'draft',
-        params.id
+      await db.query(
+        `UPDATE newsletters SET title=$1, summary=$2, content=$3, category=$4,
+         thumbnail_url=$5, pdf_path=$6, published_at=$7, status=$8 WHERE id=$9`,
+        [title, summary || null, content || null,
+         category ? JSON.stringify(category) : '[]',
+         thumbnail_url || null, pdf_path || null, published_at || null, status || 'draft', params.id]
       )
     }
 
-    const updated = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(params.id)
+    const updated = (await db.query('SELECT * FROM newsletters WHERE id = $1', [params.id])).rows[0]
     return NextResponse.json(updated)
   } catch (err) {
     console.error('[newsletters/[id] PUT]', err)
@@ -79,12 +58,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const db = getDb()
-    const existing = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(params.id)
-    if (!existing) {
-      return NextResponse.json({ error: '찾을 수 없습니다' }, { status: 404 })
-    }
-    db.prepare('DELETE FROM newsletters WHERE id = ?').run(params.id)
+    const existing = (await db.query('SELECT id FROM newsletters WHERE id = $1', [params.id])).rows[0]
+    if (!existing) return NextResponse.json({ error: '찾을 수 없습니다' }, { status: 404 })
+    await db.query('DELETE FROM newsletters WHERE id = $1', [params.id])
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[newsletters/[id] DELETE]', err)

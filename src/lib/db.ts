@@ -1,80 +1,57 @@
 // src/lib/db.ts
-import { DatabaseSync } from 'node:sqlite'
-import path from 'path'
-import fs from 'fs'
+import { db } from '@vercel/postgres'
 
-// Vercel serverless 환경은 process.cwd()가 읽기 전용이므로 /tmp 사용
-const DATA_DIR = process.env.VERCEL
-  ? '/tmp/data'
-  : path.join(process.cwd(), 'data')
+export { db }
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true })
-}
-
-const DB_PATH = path.join(DATA_DIR, 'newsletter.db')
-
-let db: DatabaseSync
-
-export function getDb(): DatabaseSync {
-  if (!db) {
-    db = new DatabaseSync(DB_PATH)
-    db.exec('PRAGMA journal_mode = WAL')
-    db.exec('PRAGMA foreign_keys = ON')
-    initializeSchema(db)
-    seedInitialSubscribers(db)
-  }
-  return db
-}
-
-function seedInitialSubscribers(db: DatabaseSync) {
+export async function initSchema(): Promise<void> {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS newsletters (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      summary TEXT,
+      content TEXT,
+      category TEXT DEFAULT '[]',
+      thumbnail_url TEXT,
+      pdf_path TEXT,
+      published_at TEXT,
+      status TEXT DEFAULT 'draft',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS subscribers (
+      id SERIAL PRIMARY KEY,
+      name TEXT,
+      email TEXT UNIQUE NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS scheduled_sends (
+      id SERIAL PRIMARY KEY,
+      newsletter_id INTEGER REFERENCES newsletters(id) ON DELETE SET NULL,
+      scheduled_at TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      sent_at TEXT,
+      recipient_count INTEGER,
+      error_msg TEXT
+    )
+  `)
+  // Seed initial subscribers from env
   const raw = process.env.INITIAL_SUBSCRIBERS
-  if (!raw) return
-  try {
-    const insert = db.prepare(`INSERT OR IGNORE INTO subscribers (name, email) VALUES (?, ?)`)
+  if (raw) {
     for (const row of raw.split(';')) {
       const parts = row.trim().split(',')
       const email = (parts[1] ?? parts[0]).trim()
       const name = parts[1] ? parts[0].trim() : null
       if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        insert.run(name, email)
+        await db.query(
+          `INSERT INTO subscribers (name, email) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING`,
+          [name, email]
+        )
       }
     }
-  } catch { /* empty */ }
-}
-
-function initializeSchema(db: DatabaseSync) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS newsletters (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      title         TEXT NOT NULL,
-      summary       TEXT,
-      content       TEXT,
-      category      TEXT DEFAULT '[]',
-      thumbnail_url TEXT,
-      pdf_path      TEXT,
-      published_at  TEXT,
-      status        TEXT DEFAULT 'draft',
-      created_at    TEXT DEFAULT (datetime('now', '+9 hours'))
-    );
-
-    CREATE TABLE IF NOT EXISTS subscribers (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      name       TEXT,
-      email      TEXT UNIQUE NOT NULL,
-      created_at TEXT DEFAULT (datetime('now', '+9 hours'))
-    );
-
-    CREATE TABLE IF NOT EXISTS scheduled_sends (
-      id              INTEGER PRIMARY KEY AUTOINCREMENT,
-      newsletter_id   INTEGER REFERENCES newsletters(id),
-      scheduled_at    TEXT NOT NULL,
-      status          TEXT DEFAULT 'pending',
-      sent_at         TEXT,
-      recipient_count INTEGER,
-      error_msg       TEXT
-    );
-  `)
+  }
 }
 
 export type Newsletter = {
