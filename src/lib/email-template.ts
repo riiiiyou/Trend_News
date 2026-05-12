@@ -8,8 +8,9 @@ export function buildNewsletterHtml(params: {
   newsletterId: number
   pdfPath: string | null
   siteUrl: string
+  unsubscribeUrl?: string
 }): string {
-  const { teamName, title, content, newsletterId, pdfPath, siteUrl } = params
+  const { teamName, title, content, newsletterId, pdfPath, siteUrl, unsubscribeUrl } = params
   const webUrl = `${siteUrl}/newsletter/${newsletterId}`
   const pdfLink = pdfPath ? (pdfPath.startsWith('http') ? pdfPath : `${siteUrl}${pdfPath}`) : null
 
@@ -47,6 +48,7 @@ export function buildNewsletterHtml(params: {
         ${pdfLink ? `&nbsp;·&nbsp;<a href="${pdfLink}">📄 PDF 원본 다운로드</a>` : ''}
       </p>
       <p>이 메일은 팀 뉴스레터 구독자에게 발송되었습니다.</p>
+      ${unsubscribeUrl ? `<p><a href="${unsubscribeUrl}">수신 거부(구독 취소)</a></p>` : ''}
     </div>
   </div>
 </body>
