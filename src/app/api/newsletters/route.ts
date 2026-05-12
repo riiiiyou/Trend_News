@@ -1,12 +1,11 @@
 // src/app/api/newsletters/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { db } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
   try {
-    const db = getDb()
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const category = searchParams.get('category')
@@ -15,29 +14,22 @@ export async function GET(req: NextRequest) {
     const q = searchParams.get('q')
     const offset = (page - 1) * limit
 
-    let query = 'SELECT * FROM newsletters WHERE 1=1'
-    const params: (string | number)[] = []
+    const conditions: string[] = ['1=1']
+    const params: unknown[] = []
+    let i = 1
 
-    if (status) {
-      query += ' AND status = ?'
-      params.push(status)
-    }
-    if (category) {
-      query += ` AND category LIKE ?`
-      params.push(`%${category}%`)
-    }
-    if (q) {
-      query += ` AND (title LIKE ? OR summary LIKE ?)`
-      params.push(`%${q}%`, `%${q}%`)
-    }
+    if (status) { conditions.push(`status = $${i++}`); params.push(status) }
+    if (category) { conditions.push(`category LIKE $${i++}`); params.push(`%${category}%`) }
+    if (q) { conditions.push(`(title ILIKE $${i++} OR summary ILIKE $${i++})`); params.push(`%${q}%`, `%${q}%`) }
 
-    const countResult = db.prepare(query.replace('SELECT *', 'SELECT COUNT(*) as count')).get(...params) as { count: number }
-    const total = countResult.count
+    const where = conditions.join(' AND ')
+    const countResult = await db.query(`SELECT COUNT(*) as count FROM newsletters WHERE ${where}`, params)
+    const total = parseInt(countResult.rows[0].count)
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?'
-    params.push(limit, offset)
-
-    const newsletters = db.prepare(query).all(...params)
+    const newsletters = (await db.query(
+      `SELECT * FROM newsletters WHERE ${where} ORDER BY created_at DESC LIMIT $${i++} OFFSET $${i++}`,
+      [...params, limit, offset]
+    )).rows
 
     return NextResponse.json({ newsletters, total, page, limit })
   } catch (err) {
@@ -48,28 +40,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const db = getDb()
     const body = await req.json()
     const { title, summary, content, category, thumbnail_url, pdf_path, published_at, status } = body
 
-    const result = db
-      .prepare(
-        `INSERT INTO newsletters (title, summary, content, category, thumbnail_url, pdf_path, published_at, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        title || '제목 없음',
-        summary || null,
-        content || null,
-        category ? JSON.stringify(category) : '[]',
-        thumbnail_url || null,
-        pdf_path || null,
-        published_at || null,
-        status || 'draft'
-      )
-
-    const newsletter = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(result.lastInsertRowid)
-    return NextResponse.json(newsletter, { status: 201 })
+    const result = await db.query(
+      `INSERT INTO newsletters (title, summary, content, category, thumbnail_url, pdf_path, published_at, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [title || '제목 없음', summary || null, content || null,
+       category ? JSON.stringify(category) : '[]',
+       thumbnail_url || null, pdf_path || null, published_at || null, status || 'draft']
+    )
+    return NextResponse.json(result.rows[0], { status: 201 })
   } catch (err) {
     console.error('[newsletters POST]', err)
     return NextResponse.json({ error: '서버 오류' }, { status: 500 })

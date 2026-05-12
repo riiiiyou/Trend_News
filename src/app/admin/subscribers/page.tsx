@@ -92,9 +92,14 @@ export default function SubscribersPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">👥 구독자 관리</h1>
-        <p className="text-sm text-gray-500 mt-1">총 {subscribers.length}명</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">👥 구독자 관리</h1>
+          <p className="text-sm text-gray-500 mt-1">총 {subscribers.length}명</p>
+        </div>
+        <a href="/api/subscribers/export" download className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:border-[var(--point)] transition-colors">
+          📥 엑셀 다운로드
+        </a>
       </div>
 
       {/* Add form */}

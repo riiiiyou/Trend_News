@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { db } from '@/lib/db'
 import { verifyUnsubscribeSignature } from '@/lib/unsubscribe'
 
 export const runtime = 'nodejs'
@@ -18,13 +18,10 @@ export async function GET(req: NextRequest) {
       return new NextResponse('유효하지 않은 구독 취소 링크입니다.', { status: 403 })
     }
 
-    const db = getDb()
-    const result = db.prepare('DELETE FROM subscribers WHERE email = ?').run(email)
-
-    const message =
-      result.changes > 0
-        ? '구독이 정상적으로 취소되었습니다.'
-        : '이미 구독이 취소되었거나 등록되지 않은 이메일입니다.'
+    const result = await db.query('DELETE FROM subscribers WHERE email = $1 RETURNING id', [email])
+    const message = result.rowCount && result.rowCount > 0
+      ? '구독이 정상적으로 취소되었습니다.'
+      : '이미 구독이 취소되었거나 등록되지 않은 이메일입니다.'
 
     const html = `<!doctype html>
 <html lang="ko">
@@ -37,10 +34,7 @@ export async function GET(req: NextRequest) {
 </body>
 </html>`
 
-    return new NextResponse(html, {
-      status: 200,
-      headers: { 'content-type': 'text/html; charset=utf-8' },
-    })
+    return new NextResponse(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } })
   } catch (err) {
     console.error('[unsubscribe GET]', err)
     return new NextResponse('서버 오류가 발생했습니다.', { status: 500 })
