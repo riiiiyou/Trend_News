@@ -15,11 +15,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link href="/admin" className="font-bold text-lg" style={{ color: 'var(--point)' }}>
                 ⚙️ 관리자
               </Link>
-              <nav className="hidden sm:flex items-center gap-4 text-sm text-gray-600">
-                <Link href="/admin" className="hover:text-[var(--point)] transition-colors">대시보드</Link>
-                <Link href="/admin/upload" className="hover:text-[var(--point)] transition-colors">업로드</Link>
-                <Link href="/admin/subscribers" className="hover:text-[var(--point)] transition-colors">구독자</Link>
-                <Link href="/admin/schedule" className="hover:text-[var(--point)] transition-colors">발송 예약</Link>
+              <nav className="flex items-center gap-3 text-sm text-gray-600 overflow-x-auto">
+                <Link href="/admin" className="hover:text-[var(--point)] transition-colors whitespace-nowrap">대시보드</Link>
+                <Link href="/admin/upload" className="hover:text-[var(--point)] transition-colors whitespace-nowrap">업로드</Link>
+                <Link href="/admin/subscribers" className="hover:text-[var(--point)] transition-colors whitespace-nowrap">구독자</Link>
+                <Link href="/admin/schedule" className="hover:text-[var(--point)] transition-colors whitespace-nowrap">발송 예약</Link>
               </nav>
             </div>
             <div className="flex items-center gap-3">

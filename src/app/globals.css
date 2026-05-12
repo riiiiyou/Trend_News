@@ -84,3 +84,10 @@ body {
   color: #555;
   font-style: italic;
 }
+
+/* Mobile optimization */
+@media (max-width: 640px) {
+  .newsletter-content h1 { font-size: 1.4rem; }
+  .newsletter-content h2 { font-size: 1.2rem; }
+  .newsletter-content table { font-size: 0.85rem; overflow-x: auto; display: block; }
+}

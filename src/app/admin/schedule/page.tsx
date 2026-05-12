@@ -55,7 +55,7 @@ export default function SchedulePage() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t) }, [])
 
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault()
