@@ -11,7 +11,8 @@ export async function GET() {
     return NextResponse.json(rows)
   } catch (err) {
     console.error('[subscribers GET]', err)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `서버 오류: ${msg}` }, { status: 500 })
   }
 }
 
