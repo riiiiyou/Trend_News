@@ -10,65 +10,67 @@ const MIME_MAP: Record<string, string> = {
 
 export const runtime = 'nodejs'
 
+async function getBufferAndMeta(req: NextRequest): Promise<{ buffer: Buffer; filename: string; blobUrl?: string } | null> {
+  const ct = req.headers.get('content-type') || ''
+
+  if (ct.includes('application/json')) {
+    // Large file: came via Vercel Blob client upload
+    const { blobUrl, filename } = await req.json() as { blobUrl: string; filename: string }
+    if (!blobUrl || !filename) return null
+    const blobRes = await fetch(blobUrl)
+    if (!blobRes.ok) throw new Error('Blob에서 파일을 가져오는데 실패했습니다')
+    return { buffer: Buffer.from(await blobRes.arrayBuffer()), filename, blobUrl }
+  }
+
+  // Small file: direct FormData upload
+  const formData = await req.formData()
+  const file = formData.get('file') as File | null
+  if (!file) return null
+  return { buffer: Buffer.from(await file.arrayBuffer()), filename: file.name }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    // Accept JSON body with blobUrl (client-side upload flow)
-    const body = await req.json() as { blobUrl: string; filename: string }
-    const { blobUrl, filename } = body
+    const result = await getBufferAndMeta(req)
+    if (!result) return NextResponse.json({ error: '파일이 없습니다' }, { status: 400 })
 
-    if (!blobUrl || !filename) {
-      return NextResponse.json({ error: '파일 정보가 없습니다' }, { status: 400 })
-    }
+    const { buffer, filename, blobUrl } = result
+    if (buffer.length > 50 * 1024 * 1024) return NextResponse.json({ error: '파일 크기는 50MB 이하여야 합니다' }, { status: 400 })
 
     const nameLower = filename.toLowerCase()
     const ext = nameLower.match(/\.[^.]+$/)?.[0] ?? ''
     const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext)
     const isPpt = ext === '.pptx' || ext === '.ppt'
 
-    if (!isImage && !isPpt) {
-      return NextResponse.json({ error: 'PPT, PPTX 또는 이미지(JPG, PNG) 파일만 업로드 가능합니다' }, { status: 400 })
-    }
-
-    // Download file from Blob URL
-    const blobRes = await fetch(blobUrl)
-    if (!blobRes.ok) {
-      return NextResponse.json({ error: 'Blob에서 파일을 가져오는데 실패했습니다' }, { status: 500 })
-    }
-    const buffer = Buffer.from(await blobRes.arrayBuffer())
-
-    if (buffer.length > 50 * 1024 * 1024) {
-      return NextResponse.json({ error: '파일 크기는 50MB 이하여야 합니다' }, { status: 400 })
-    }
+    if (!isImage && !isPpt) return NextResponse.json({ error: 'PPT, PPTX 또는 이미지(JPG, PNG) 파일만 업로드 가능합니다' }, { status: 400 })
 
     if (isImage) {
       const mime = MIME_MAP[ext] ?? 'image/jpeg'
       const thumbnailUrl = buffer.length <= 2 * 1024 * 1024
-        ? `data:${mime};base64,${buffer.toString('base64')}` : blobUrl
-
-      const result = await db.query(
+        ? `data:${mime};base64,${buffer.toString('base64')}` : (blobUrl ?? null)
+      const res = await db.query(
         `INSERT INTO newsletters (title, content, thumbnail_url, pdf_path, status) VALUES ($1,$2,$3,$4,'draft') RETURNING *`,
         ['제목을 입력하세요', '', thumbnailUrl, null]
       )
-      const nl = result.rows[0]
+      const nl = res.rows[0]
       return NextResponse.json({ id: nl.id, title: nl.title, content: nl.content, links: [], thumbnailUrl: nl.thumbnail_url })
     }
 
-    // PPT/PPTX — parse content
+    // PPT/PPTX
     const parsed = await parsePptx(buffer)
 
     let thumbnailUrl: string | null = null
-    if (parsed.thumbnailBuffer && parsed.thumbnailExt) {
-      if (parsed.thumbnailBuffer.length <= 1024 * 1024) {
-        const mime = MIME_MAP[parsed.thumbnailExt] ?? 'image/jpeg'
-        thumbnailUrl = `data:${mime};base64,${parsed.thumbnailBuffer.toString('base64')}`
-      }
+    if (parsed.thumbnailBuffer && parsed.thumbnailExt && parsed.thumbnailBuffer.length <= 1024 * 1024) {
+      const mime = MIME_MAP[parsed.thumbnailExt] ?? 'image/jpeg'
+      thumbnailUrl = `data:${mime};base64,${parsed.thumbnailBuffer.toString('base64')}`
     }
 
-    const result = await db.query(
+    const pdfPath = blobUrl ?? null
+    const res = await db.query(
       `INSERT INTO newsletters (title, content, thumbnail_url, pdf_path, status) VALUES ($1,$2,$3,$4,'draft') RETURNING *`,
-      [parsed.title, parsed.content, thumbnailUrl, blobUrl]
+      [parsed.title, parsed.content, thumbnailUrl, pdfPath]
     )
-    const nl = result.rows[0]
+    const nl = res.rows[0]
     await db.query(`UPDATE newsletters SET summary=$1 WHERE id=$2`, [JSON.stringify({ links: parsed.links }), nl.id])
 
     return NextResponse.json({ id: nl.id, title: parsed.title, content: parsed.content, links: parsed.links, thumbnailUrl })
