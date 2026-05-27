@@ -1,32 +1,48 @@
 'use client'
 // src/app/admin/upload/page.tsx
 import { useState, useRef, DragEvent, ChangeEvent } from 'react'
+import { upload } from '@vercel/blob/client'
 
 async function uploadAndNavigate(
   file: File,
   setError: (e: string) => void,
   setUploading: (v: boolean) => void,
-  setFileName: (v: string) => void
+  setFileName: (v: string) => void,
+  setProgress: (v: string) => void
 ) {
   setFileName(file.name)
   setError('')
   setUploading(true)
 
-  const formData = new FormData()
-  formData.append('file', file)
-
   try {
-    const res = await fetch('/api/upload', { method: 'POST', body: formData })
+    // 1단계: 브라우저에서 직접 Vercel Blob으로 업로드 (서버 4.5MB 제한 우회)
+    setProgress('Blob 업로드 중...')
+    const blob = await upload(file.name, file, {
+      access: 'public',
+      handleUploadUrl: '/api/blob-upload',
+    })
+
+    // 2단계: Blob URL을 서버에 전달해 파싱
+    setProgress('파일 분석 중...')
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blobUrl: blob.url, filename: file.name }),
+    })
+
     if (!res.ok) {
-      const data = await res.json()
-      setError(data.error || '업로드 실패')
+      const text = await res.text()
+      let msg = '업로드 실패'
+      try { msg = JSON.parse(text).error || msg } catch { msg = text.slice(0, 200) || msg }
+      setError(msg)
       setUploading(false)
+      setProgress('')
       return
     }
+
     const { id, title, content, links, thumbnailUrl } = await res.json()
     sessionStorage.setItem(`nl_draft_${id}`, JSON.stringify({ title, content, links, thumbnailUrl }))
 
-    // Save draft to localStorage registry so admin page shows it
     try {
       const registry = JSON.parse(localStorage.getItem('nl_registry') || '[]')
       const meta = { id, title, summary: null, category: '[]', published_at: null, created_at: new Date().toISOString(), status: 'draft' }
@@ -39,6 +55,7 @@ async function uploadAndNavigate(
   } catch (err) {
     setError(`업로드 중 오류: ${err instanceof Error ? err.message : String(err)}`)
     setUploading(false)
+    setProgress('')
   }
 }
 
@@ -47,6 +64,7 @@ export default function UploadPage() {
   const [pptDragging, setPptDragging] = useState(false)
   const [pptUploading, setPptUploading] = useState(false)
   const [pptFileName, setPptFileName] = useState('')
+  const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
 
   const handlePptFile = (file: File) => {
@@ -59,7 +77,7 @@ export default function UploadPage() {
       setError('파일 크기는 50MB 이하여야 합니다')
       return
     }
-    uploadAndNavigate(file, setError, setPptUploading, setPptFileName)
+    uploadAndNavigate(file, setError, setPptUploading, setPptFileName, setProgress)
   }
 
   const onPptDrop = (e: DragEvent) => { e.preventDefault(); setPptDragging(false); const f = e.dataTransfer.files[0]; if (f) handlePptFile(f) }
@@ -72,7 +90,6 @@ export default function UploadPage() {
         <p className="text-sm text-gray-500 mt-1">PPT/PPTX를 업로드해 뉴스레터를 만들 수 있습니다</p>
       </div>
 
-      {/* PPT Upload */}
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-2">📊 PPT / PPTX 업로드</h2>
         <div
@@ -82,13 +99,13 @@ export default function UploadPage() {
           onDragOver={(e) => { e.preventDefault(); setPptDragging(true) }}
           onDragLeave={() => setPptDragging(false)}
           onDrop={onPptDrop}
-          onClick={() => pptRef.current?.click()}
+          onClick={() => !pptUploading && pptRef.current?.click()}
         >
           <input ref={pptRef} type="file" accept=".ppt,.pptx" className="hidden" onChange={onPptChange} />
           {pptUploading ? (
             <div>
               <div className="text-3xl mb-3 animate-pulse">⏳</div>
-              <p className="font-medium text-gray-700 text-sm">파싱 중...</p>
+              <p className="font-medium text-gray-700 text-sm">{progress || '업로드 중...'}</p>
               <p className="text-xs text-gray-400 mt-1">{pptFileName}</p>
             </div>
           ) : (
