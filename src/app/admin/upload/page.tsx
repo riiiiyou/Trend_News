@@ -26,11 +26,18 @@ async function uploadAndNavigate(
       res = await fetch('/api/upload', { method: 'POST', body: formData })
     } else {
       // 대용량: 브라우저 → Blob 직접 업로드 후 URL만 서버 전달
-      setProgress('파일 전송 중...')
-      const blob = await upload(file.name, file, {
+      setProgress('파일 전송 중... 0%')
+      const uploadPromise = upload(file.name, file, {
         access: 'public',
         handleUploadUrl: '/api/blob-upload',
+        onUploadProgress: ({ percentage }: { percentage: number }) => {
+          setProgress(`파일 전송 중... ${Math.round(percentage)}%`)
+        },
       })
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('업로드 시간 초과 (3분). 파일 크기를 줄이거나 네트워크를 확인해 주세요.')), 3 * 60 * 1000)
+      )
+      const blob = await Promise.race([uploadPromise, timeoutPromise])
       setProgress('파일 분석 중...')
       res = await fetch('/api/upload', {
         method: 'POST',
