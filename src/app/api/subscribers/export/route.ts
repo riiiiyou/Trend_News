@@ -1,12 +1,13 @@
 // src/app/api/subscribers/export/route.ts
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, ensureSchema } from '@/lib/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
+    await ensureSchema()
     const { rows } = await db.query('SELECT name, email, created_at FROM subscribers ORDER BY created_at DESC')
     const lines = ['이름,이메일,등록일', ...rows.map((r) => {
       const date = new Date(r.created_at).toLocaleDateString('ko-KR')

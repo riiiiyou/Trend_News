@@ -1,6 +1,6 @@
 // src/app/api/send/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, ensureSchema } from '@/lib/db'
 import { sendMail, buildNewsletterHtml } from '@/lib/mailer'
 import { createUnsubscribeSignature } from '@/lib/unsubscribe'
 
@@ -8,6 +8,7 @@ export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureSchema()
     const body = await req.json()
     const { newsletter_id, test_email } = body
 

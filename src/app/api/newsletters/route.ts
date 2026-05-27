@@ -1,12 +1,13 @@
 // src/app/api/newsletters/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, ensureSchema } from '@/lib/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureSchema()
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const category = searchParams.get('category')
@@ -41,6 +42,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureSchema()
     const body = await req.json()
     const { title, summary, content, category, thumbnail_url, pdf_path, published_at, status } = body
 

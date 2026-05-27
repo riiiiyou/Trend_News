@@ -3,6 +3,15 @@ import { db } from '@vercel/postgres'
 
 export { db }
 
+let _schemaPromise: Promise<void> | null = null
+export function ensureSchema(): Promise<void> {
+  if (!_schemaPromise) _schemaPromise = initSchema().catch((err) => {
+    _schemaPromise = null
+    throw err
+  })
+  return _schemaPromise
+}
+
 export async function initSchema(): Promise<void> {
   await db.query(`
     CREATE TABLE IF NOT EXISTS newsletters (

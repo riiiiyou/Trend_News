@@ -1,12 +1,13 @@
 // src/app/api/subscribers/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, ensureSchema } from '@/lib/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
+    await ensureSchema()
     const { rows } = await db.query('SELECT * FROM subscribers ORDER BY created_at DESC')
     return NextResponse.json(rows)
   } catch (err) {
@@ -18,6 +19,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureSchema()
     const contentType = req.headers.get('content-type') || ''
 
     if (contentType.includes('text/csv') || contentType.includes('application/octet-stream')) {
