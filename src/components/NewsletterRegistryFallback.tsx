@@ -19,7 +19,7 @@ export default function NewsletterRegistryFallback() {
   useEffect(() => {
     try {
       const stored = localStorage.getItem('nl_registry')
-      if (stored) setList(JSON.parse(stored))
+      if (stored) setList(JSON.parse(stored).filter((n: Meta) => n.status === 'published'))
     } catch { /* empty */ }
   }, [])
 

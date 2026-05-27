@@ -1,7 +1,7 @@
 'use client'
 // src/app/admin/upload/page.tsx
 import { useState, useRef, DragEvent, ChangeEvent } from 'react'
-import { upload } from '@vercel/blob/client'
+import { put } from '@vercel/blob/client'
 
 const DIRECT_LIMIT = 4 * 1024 * 1024 // 4MB 미만은 서버 직접 전송 (빠름)
 
@@ -25,11 +25,22 @@ async function uploadAndNavigate(
       formData.append('file', file)
       res = await fetch('/api/upload', { method: 'POST', body: formData })
     } else {
-      // 대용량: 브라우저 → Blob 직접 업로드 후 URL만 서버 전달
+      // 대용량: 서버에서 토큰 발급 → 브라우저가 Blob에 직접 PUT (webhook 없음)
       setProgress('파일 전송 중... 0%')
-      const uploadPromise = upload(file.name, file, {
+      const tokenRes = await fetch('/api/blob-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pathname: file.name }),
+      })
+      if (!tokenRes.ok) {
+        const e = await tokenRes.json().catch(() => ({}))
+        throw new Error(e.error || '토큰 발급 실패')
+      }
+      const { token } = await tokenRes.json()
+
+      const putPromise = put(file.name, file, {
         access: 'public',
-        handleUploadUrl: '/api/blob-upload',
+        token,
         onUploadProgress: ({ percentage }: { percentage: number }) => {
           setProgress(`파일 전송 중... ${Math.round(percentage)}%`)
         },
@@ -37,7 +48,7 @@ async function uploadAndNavigate(
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('업로드 시간 초과 (3분). 파일 크기를 줄이거나 네트워크를 확인해 주세요.')), 3 * 60 * 1000)
       )
-      const blob = await Promise.race([uploadPromise, timeoutPromise])
+      const blob = await Promise.race([putPromise, timeoutPromise])
       setProgress('파일 분석 중...')
       res = await fetch('/api/upload', {
         method: 'POST',
