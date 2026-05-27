@@ -1,5 +1,5 @@
 // src/app/api/blob-upload/route.ts
-import { handleUpload, type HandleUploadBody } from '@vercel/blob'
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
