@@ -3,6 +3,8 @@
 import { useState, useRef, DragEvent, ChangeEvent } from 'react'
 import { upload } from '@vercel/blob/client'
 
+const DIRECT_LIMIT = 4 * 1024 * 1024 // 4MB 미만은 서버 직접 전송 (빠름)
+
 async function uploadAndNavigate(
   file: File,
   setError: (e: string) => void,
@@ -14,21 +16,28 @@ async function uploadAndNavigate(
   setError('')
   setUploading(true)
 
+  let res: Response
   try {
-    // 1단계: 브라우저에서 직접 Vercel Blob으로 업로드 (서버 4.5MB 제한 우회)
-    setProgress('Blob 업로드 중...')
-    const blob = await upload(file.name, file, {
-      access: 'public',
-      handleUploadUrl: '/api/blob-upload',
-    })
-
-    // 2단계: Blob URL을 서버에 전달해 파싱
-    setProgress('파일 분석 중...')
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blobUrl: blob.url, filename: file.name }),
-    })
+    if (file.size < DIRECT_LIMIT) {
+      // 소용량: FormData로 서버에 직접 전송 (빠름)
+      setProgress('업로드 중...')
+      const formData = new FormData()
+      formData.append('file', file)
+      res = await fetch('/api/upload', { method: 'POST', body: formData })
+    } else {
+      // 대용량: 브라우저 → Blob 직접 업로드 후 URL만 서버 전달
+      setProgress('파일 전송 중...')
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/blob-upload',
+      })
+      setProgress('파일 분석 중...')
+      res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blobUrl: blob.url, filename: file.name }),
+      })
+    }
 
     if (!res.ok) {
       const text = await res.text()

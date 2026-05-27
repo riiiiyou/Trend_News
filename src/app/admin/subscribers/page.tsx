@@ -24,11 +24,18 @@ export default function SubscribersPage() {
       if (cached) setSubscribers(JSON.parse(cached))
     } catch { /* empty */ }
 
-    const res = await fetch('/api/subscribers')
-    if (res.ok) {
-      const data = await res.json()
-      setSubscribers(data)
-      try { localStorage.setItem('nl_subscribers', JSON.stringify(data)) } catch { /* empty */ }
+    try {
+      const res = await fetch('/api/subscribers')
+      if (res.ok) {
+        const data = await res.json()
+        setSubscribers(data)
+        try { localStorage.setItem('nl_subscribers', JSON.stringify(data)) } catch { /* empty */ }
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setError(`구독자 목록 불러오기 실패: ${data.error || res.status}`)
+      }
+    } catch (err) {
+      setError(`구독자 목록 불러오기 실패: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
