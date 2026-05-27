@@ -11,7 +11,8 @@ export async function GET() {
     return NextResponse.json(rows)
   } catch (err) {
     console.error('[subscribers GET]', err)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `서버 오류: ${msg}` }, { status: 500 })
   }
 }
 
@@ -50,8 +51,14 @@ export async function POST(req: NextRequest) {
         [name || null, email]
       )
       return NextResponse.json(result.rows[0], { status: 201 })
-    } catch {
-      return NextResponse.json({ error: '이미 등록된 이메일입니다' }, { status: 409 })
+    } catch (err) {
+      const code = (err as { code?: string }).code
+      if (code === '23505') {
+        return NextResponse.json({ error: '이미 등록된 이메일입니다' }, { status: 409 })
+      }
+      console.error('[subscribers POST insert]', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: `DB 오류: ${msg}` }, { status: 500 })
     }
   } catch (err) {
     console.error('[subscribers POST]', err)
