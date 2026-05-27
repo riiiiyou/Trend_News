@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, ensureSchema } from '@/lib/db'
 import { verifyUnsubscribeSignature } from '@/lib/unsubscribe'
 
 export const runtime = 'nodejs'
@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureSchema()
     const email = req.nextUrl.searchParams.get('email')?.trim()
     const signature = req.nextUrl.searchParams.get('sig')?.trim()
 

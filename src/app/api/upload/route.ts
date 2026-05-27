@@ -1,7 +1,7 @@
 // src/app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { parsePptx } from '@/lib/pptx-parser'
-import { db } from '@/lib/db'
+import { db, ensureSchema } from '@/lib/db'
 
 const MIME_MAP: Record<string, string> = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -31,6 +31,7 @@ async function getBufferAndMeta(req: NextRequest): Promise<{ buffer: Buffer; fil
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureSchema()
     const result = await getBufferAndMeta(req)
     if (!result) return NextResponse.json({ error: '파일이 없습니다' }, { status: 400 })
 

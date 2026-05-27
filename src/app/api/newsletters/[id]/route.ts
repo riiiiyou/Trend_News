@@ -1,11 +1,12 @@
 // src/app/api/newsletters/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, ensureSchema } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    await ensureSchema()
     const result = await db.query('SELECT * FROM newsletters WHERE id = $1', [params.id])
     const newsletter = result.rows[0]
     if (!newsletter) return NextResponse.json({ error: '찾을 수 없습니다' }, { status: 404 })
@@ -26,6 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    await ensureSchema()
     const body = await req.json()
     const { title, summary, content, category, thumbnail_url, pdf_path, published_at, status } = body
 
@@ -58,6 +60,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    await ensureSchema()
     const existing = (await db.query('SELECT id FROM newsletters WHERE id = $1', [params.id])).rows[0]
     if (!existing) return NextResponse.json({ error: '찾을 수 없습니다' }, { status: 404 })
     await db.query('DELETE FROM newsletters WHERE id = $1', [params.id])
